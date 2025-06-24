@@ -25,5 +25,4 @@ Instructions on how to build and run StelLang will be added here as the project 
 Information on how to contribute to StelLang will be added later.
 
 ---
-
-*Note: This roadmap is subject to change based on development progress and priorities.*
+*Note: This language is under active development. Features and syntax may change.*
