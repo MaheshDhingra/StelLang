@@ -256,6 +256,16 @@ impl Lexer {
             "null" => Token::Null,
             "print" => Token::Print,
             "input" => Token::Input,
+            "match" => Token::Match,
+            "case" => Token::Case,
+            "struct" => Token::Struct,
+            "enum" => Token::Enum,
+            "for" => Token::For,
+            "in" => Token::In,
+            "try" => Token::Try,
+            "catch" => Token::Catch,
+            "throw" => Token::Throw,
+            "import" => Token::Import,
             _ => Token::Ident(ident),
         }
     }

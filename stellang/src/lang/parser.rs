@@ -73,7 +73,204 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Option<Expr> {
-        self.parse_logical_or()
+        match self.peek() {
+            Token::Let => self.parse_let(),
+            Token::Const => self.parse_const(),
+            Token::Match => self.parse_match(),
+            Token::Struct => self.parse_struct(),
+            Token::Enum => self.parse_enum(),
+            Token::For => self.parse_for(),
+            Token::Try => self.parse_try_catch(),
+            Token::Throw => self.parse_throw(),
+            Token::Import => self.parse_import(),
+            _ => self.parse_logical_or(),
+        }
+    }
+
+    fn parse_import(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'import'
+        if let Token::String(s) = self.peek() {
+            let s = s.clone();
+            self.advance();
+            Some(Expr::Import(s))
+        } else {
+            None
+        }
+    }
+
+    fn parse_let(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'let'
+        let name = if let Token::Ident(n) = self.peek() {
+            let n = n.clone();
+            self.advance();
+            n
+        } else {
+            return None;
+        };
+        if let Token::Assign = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let expr = self.parse_expr()?;
+        Some(Expr::Let { name, expr: Box::new(expr) })
+    }
+
+    fn parse_const(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'const'
+        let name = if let Token::Ident(n) = self.peek() {
+            let n = n.clone();
+            self.advance();
+            n
+        } else {
+            return None;
+        };
+        if let Token::Assign = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let expr = self.parse_expr()?;
+        Some(Expr::Const { name, expr: Box::new(expr) })
+    }
+
+    fn parse_match(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'match'
+        let expr = self.parse_expr()?;
+        if let Token::LBrace = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let mut arms = Vec::new();
+        while !matches!(self.peek(), Token::RBrace | Token::EOF) {
+            // Parse pattern
+            let pat = self.parse_expr()?;
+            if let Token::FatArrow = self.peek() {
+                self.advance();
+            } else {
+                return None;
+            }
+            let res = self.parse_expr()?;
+            arms.push((pat, res));
+            if let Token::Comma = self.peek() {
+                self.advance();
+            }
+        }
+        if let Token::RBrace = self.peek() {
+            self.advance();
+        }
+        Some(Expr::Match { expr: Box::new(expr), arms })
+    }
+
+    fn parse_struct(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'struct'
+        let name = if let Token::Ident(n) = self.peek() {
+            let n = n.clone();
+            self.advance();
+            n
+        } else {
+            return None;
+        };
+        if let Token::LBrace = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let mut fields = Vec::new();
+        while let Token::Ident(field) = self.peek() {
+            fields.push(field.clone());
+            self.advance();
+            if let Token::Comma = self.peek() {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        if let Token::RBrace = self.peek() {
+            self.advance();
+        }
+        Some(Expr::StructDef { name, fields })
+    }
+
+    fn parse_enum(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'enum'
+        let name = if let Token::Ident(n) = self.peek() {
+            let n = n.clone();
+            self.advance();
+            n
+        } else {
+            return None;
+        };
+        if let Token::LBrace = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let mut variants = Vec::new();
+        while let Token::Ident(variant) = self.peek() {
+            variants.push(variant.clone());
+            self.advance();
+            if let Token::Comma = self.peek() {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        if let Token::RBrace = self.peek() {
+            self.advance();
+        }
+        Some(Expr::EnumDef { name, variants })
+    }
+
+    fn parse_for(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'for'
+        let var = if let Token::Ident(n) = self.peek() {
+            let n = n.clone();
+            self.advance();
+            n
+        } else {
+            return None;
+        };
+        if let Token::In = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let iter = self.parse_expr()?;
+        let body = if let Token::LBrace = self.peek() {
+            self.parse_block()?
+        } else {
+            return None;
+        };
+        Some(Expr::For { var, iter: Box::new(iter), body: Box::new(body) })
+    }
+
+    fn parse_try_catch(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'try'
+        let try_block = self.parse_block()?;
+        let mut catch_var = None;
+        if let Token::Catch = self.peek() {
+            self.advance();
+            if let Token::Ident(var) = self.peek() {
+                catch_var = Some(var.clone());
+                self.advance();
+            }
+            let catch_block = self.parse_block()?;
+            Some(Expr::TryCatch {
+                try_block: Box::new(try_block),
+                catch_var,
+                catch_block: Box::new(catch_block),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_throw(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'throw'
+        let expr = self.parse_expr()?;
+        Some(Expr::Throw(Box::new(expr)))
     }
 
     fn parse_logical_or(&mut self) -> Option<Expr> {
@@ -229,6 +426,9 @@ impl Parser {
 
     fn parse_primary(&mut self) -> Option<Expr> {
         match self.peek() {
+            Token::True => { self.advance(); Some(Expr::Bool(true)) }
+            Token::False => { self.advance(); Some(Expr::Bool(false)) }
+            Token::Null => { self.advance(); Some(Expr::Null) }
             Token::Integer(n) => {
                 let n = *n;
                 self.advance();
@@ -244,18 +444,52 @@ impl Parser {
                 self.advance();
                 Some(Expr::String(s))
             }
-            Token::Ident(name) => {
-                let name = name.clone();
-                self.advance();
-                Some(Expr::Ident(name))
-            }
             Token::LParen => {
                 self.advance();
-                let expr = self.parse_expr();
+                let mut items = Vec::new();
+                if let Token::RParen = self.peek() {
+                    self.advance();
+                    return Some(Expr::TupleLiteral(items));
+                }
+                loop {
+                    items.push(self.parse_expr()?);
+                    if let Token::Comma = self.peek() {
+                        self.advance();
+                    } else {
+                        break;
+                    }
+                }
                 if let Token::RParen = self.peek() {
                     self.advance();
                 }
-                expr
+                if items.len() == 1 {
+                    Some(items.remove(0))
+                } else {
+                    Some(Expr::TupleLiteral(items))
+                }
+            }
+            Token::Ident(name) => {
+                let name = name.clone();
+                self.advance();
+                if let Token::Comma = self.peek() {
+                    // Destructuring assignment: (a, b) = ...
+                    let mut names = vec![name];
+                    while let Token::Comma = self.peek() {
+                        self.advance();
+                        if let Token::Ident(n) = self.peek() {
+                            names.push(n.clone());
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                    if let Token::Assign = self.peek() {
+                        self.advance();
+                        let expr = self.parse_expr()?
+                        return Some(Expr::Destructure { names, expr: Box::new(expr) });
+                    }
+                }
+                Some(Expr::Ident(name))
             }
             _ => None,
         }

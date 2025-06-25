@@ -124,6 +124,19 @@ impl Interpreter {
                 self.env.insert(name.clone(), val.clone());
                 val
             }
+            Expr::Let { name, expr } => {
+                let val = self.eval_inner(expr);
+                self.env.insert(name.clone(), val.clone());
+                val
+            }
+            Expr::Const { name, expr } => {
+                let val = self.eval_inner(expr);
+                // For now, treat like let (no immutability enforcement yet)
+                self.env.insert(name.clone(), val.clone());
+                val
+            }
+            Expr::Bool(b) => Value::Number(if *b { 1.0 } else { 0.0 }),
+            Expr::Null => Value::Number(0.0),
             Expr::Block(exprs) => {
                 let mut last = Value::Number(0.0);
                 for e in exprs {
@@ -170,7 +183,11 @@ impl Interpreter {
                             Value::Array(arr) => println!("{:?}", arr),
                             Value::Map(map) => println!("{:?}", map),
                             Value::Error(e) => println!("Error: {}", e),
-                        }
+                            v => match v {
+                                Value::Number(n) if *n == 1.0 => println!("true"),
+                                Value::Number(n) if *n == 0.0 => println!("false"),
+                                _ => println!("null"),
+                            },
                     }
                     Value::Number(0.0)
                 } else if name == "sqrt" {
@@ -253,6 +270,204 @@ impl Interpreter {
                     } else {
                         Value::Error("to_string expects 1 argument".to_string())
                     }
+                } else if name == "input" {
+                    use std::io::{self, Write};
+                    print!("Input: ");
+                    io::stdout().flush().unwrap();
+                    let mut buf = String::new();
+                    io::stdin().read_line(&mut buf).unwrap();
+                    Value::String(buf.trim_end().to_string())
+                } else if name == "min" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
+                            (Value::Number(a), Value::Number(b)) => Value::Number(a.min(b)),
+                            _ => Value::Error("min expects two numbers".to_string()),
+                        }
+                    } else {
+                        Value::Error("min expects 2 arguments".to_string())
+                    }
+                } else if name == "max" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
+                            (Value::Number(a), Value::Number(b)) => Value::Number(a.max(b)),
+                            _ => Value::Error("max expects two numbers".to_string()),
+                        }
+                    } else {
+                        Value::Error("max expects 2 arguments".to_string())
+                    }
+                } else if name == "sum" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Array(arr) => Value::Number(arr.iter().filter_map(|v| if let Value::Number(n) = v { Some(*n) } else { None }).sum()),
+                            _ => Value::Error("sum expects an array of numbers".to_string()),
+                        }
+                    } else {
+                        Value::Error("sum expects 1 argument".to_string())
+                    }
+                } else if name == "range" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
+                            (Value::Number(start), Value::Number(end)) => {
+                                let arr = (start as i64..end as i64).map(|n| Value::Number(n as f64)).collect();
+                                Value::Array(arr)
+                            }
+                            _ => Value::Error("range expects two numbers".to_string()),
+                        }
+                    } else {
+                        Value::Error("range expects 2 arguments".to_string())
+                    }
+                } else if name == "map" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), &args[1]) {
+                            (Value::Array(arr), Expr::FnDef { name, params, body }) => {
+                                let mut result = Vec::new();
+                                for v in arr {
+                                    let mut local_env = self.env.clone();
+                                    if let Some(param) = params.get(0) {
+                                        local_env.insert(param.clone(), v);
+                                    }
+                                    let mut sub_interpreter = Interpreter {
+                                        env: local_env,
+                                        functions: self.functions.clone(),
+                                    };
+                                    result.push(sub_interpreter.eval_inner(body));
+                                }
+                                Value::Array(result)
+                            }
+                            _ => Value::Error("map expects an array and a function".to_string()),
+                        }
+                    } else {
+                        Value::Error("map expects 2 arguments".to_string())
+                    }
+                } else if name == "filter" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), &args[1]) {
+                            (Value::Array(arr), Expr::FnDef { name, params, body }) => {
+                                let mut result = Vec::new();
+                                for v in arr {
+                                    let mut local_env = self.env.clone();
+                                    if let Some(param) = params.get(0) {
+                                        local_env.insert(param.clone(), v.clone());
+                                    }
+                                    let mut sub_interpreter = Interpreter {
+                                        env: local_env,
+                                        functions: self.functions.clone(),
+                                    };
+                                    let cond = sub_interpreter.eval_inner(body);
+                                    if let Value::Number(n) = cond {
+                                        if n != 0.0 {
+                                            result.push(v);
+                                        }
+                                    }
+                                }
+                                Value::Array(result)
+                            }
+                            _ => Value::Error("filter expects an array and a function".to_string()),
+                        }
+                    } else {
+                        Value::Error("filter expects 2 arguments".to_string())
+                    }
+                } else if name == "find" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), &args[1]) {
+                            (Value::Array(arr), Expr::FnDef { name, params, body }) => {
+                                for v in arr {
+                                    let mut local_env = self.env.clone();
+                                    if let Some(param) = params.get(0) {
+                                        local_env.insert(param.clone(), v.clone());
+                                    }
+                                    let mut sub_interpreter = Interpreter {
+                                        env: local_env,
+                                        functions: self.functions.clone(),
+                                    };
+                                    let cond = sub_interpreter.eval_inner(body);
+                                    if let Value::Number(n) = cond {
+                                        if n != 0.0 {
+                                            return v;
+                                        }
+                                    }
+                                }
+                                Value::Null
+                            }
+                            _ => Value::Error("find expects an array and a function".to_string()),
+                        }
+                    } else {
+                        Value::Error("find expects 2 arguments".to_string())
+                    }
+                } else if name == "reduce" {
+                    if args.len() == 3 {
+                        match (self.eval_inner(&args[0]), &args[1], self.eval_inner(&args[2])) {
+                            (Value::Array(arr), Expr::FnDef { name, params, body }, init) => {
+                                let mut acc = init;
+                                for v in arr {
+                                    let mut local_env = self.env.clone();
+                                    if let Some(p0) = params.get(0) {
+                                        local_env.insert(p0.clone(), acc.clone());
+                                    }
+                                    if let Some(p1) = params.get(1) {
+                                        local_env.insert(p1.clone(), v.clone());
+                                    }
+                                    let mut sub_interpreter = Interpreter {
+                                        env: local_env,
+                                        functions: self.functions.clone(),
+                                    };
+                                    acc = sub_interpreter.eval_inner(body);
+                                }
+                                acc
+                            }
+                            _ => Value::Error("reduce expects array, function, and initial value".to_string()),
+                        }
+                    } else {
+                        Value::Error("reduce expects 3 arguments".to_string())
+                    }
+                } else if name == "zip" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
+                            (Value::Array(a), Value::Array(b)) => {
+                                let arr = a.into_iter().zip(b.into_iter()).map(|(x, y)| Value::Array(vec![x, y])).collect();
+                                Value::Array(arr)
+                            }
+                            _ => Value::Error("zip expects two arrays".to_string()),
+                        }
+                    } else {
+                        Value::Error("zip expects 2 arguments".to_string())
+                    }
+                } else if name == "map_keys" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Map(map) => Value::Array(map.keys().map(|k| Value::String(k.clone())).collect()),
+                            _ => Value::Error("map_keys expects a map".to_string()),
+                        }
+                    } else {
+                        Value::Error("map_keys expects 1 argument".to_string())
+                    }
+                } else if name == "map_values" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Map(map) => Value::Array(map.values().cloned().collect()),
+                            _ => Value::Error("map_values expects a map".to_string()),
+                        }
+                    } else {
+                        Value::Error("map_values expects 1 argument".to_string())
+                    }
+                } else if name == "array_contains" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
+                            (Value::Array(arr), v) => Value::Number(arr.contains(&v) as i32 as f64),
+                            _ => Value::Error("array_contains expects array and value".to_string()),
+                        }
+                    } else {
+                        Value::Error("array_contains expects 2 arguments".to_string())
+                    }
+                } else if name == "array_index_of" {
+                    if args.len() == 2 {
+                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
+                            (Value::Array(arr), v) => Value::Number(arr.iter().position(|x| x == &v).map(|i| i as f64).unwrap_or(-1.0)),
+                            _ => Value::Error("array_index_of expects array and value".to_string()),
+                        }
+                    } else {
+                        Value::Error("array_index_of expects 2 arguments".to_string())
+                    }
                 } else if let Some((params, body)) = self.functions.get(name).cloned() {
                     if params.len() != args.len() {
                         return Value::Error("Function argument count mismatch".to_string());
@@ -291,6 +506,105 @@ impl Interpreter {
             }
             Expr::Break => Value::Error("__break__".to_string()),
             Expr::Continue => Value::Error("__continue__".to_string()),
+            Expr::Match { expr, arms } => {
+                let val = self.eval_inner(expr);
+                for (pat, res) in arms {
+                    let pat_val = self.eval_inner(pat);
+                    if Self::pattern_match(&val, &pat_val) {
+                        return self.eval_inner(res);
+                    }
+                }
+                Value::Null
+            }
+            Expr::StructDef { name, fields } => {
+                // Store struct definition in env as a marker
+                self.env.insert(format!("__struct__{}", name), Value::Array(fields.iter().map(|f| Value::String(f.clone())).collect()));
+                Value::Null
+            }
+            Expr::StructInit { name, fields } => {
+                // Create a map with struct fields
+                let mut map = std::collections::HashMap::new();
+                for (k, v) in fields {
+                    map.insert(k.clone(), self.eval_inner(v));
+                }
+                map.insert("__struct_name__".to_string(), Value::String(name.clone()));
+                Value::Map(map)
+            }
+            Expr::EnumDef { name, variants } => {
+                // Store enum definition in env as a marker
+                self.env.insert(format!("__enum__{}", name), Value::Array(variants.iter().map(|v| Value::String(v.clone())).collect()));
+                Value::Null
+            }
+            Expr::EnumInit { name, variant, value } => {
+                let mut map = std::collections::HashMap::new();
+                map.insert("__enum_name__".to_string(), Value::String(name.clone()));
+                map.insert("__variant__".to_string(), Value::String(variant.clone()));
+                if let Some(val) = value {
+                    map.insert("value".to_string(), self.eval_inner(val));
+                }
+                Value::Map(map)
+            }
+            Expr::TryCatch { try_block, catch_var, catch_block } => {
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.eval_inner(try_block)));
+                match result {
+                    Ok(v) => v,
+                    Err(e) => {
+                        let err_val = if let Some(s) = e.downcast_ref::<String>() {
+                            Value::Error(s.clone())
+                        } else {
+                            Value::Error("Unknown error".to_string())
+                        };
+                        if let Some(var) = catch_var {
+                            self.env.insert(var.clone(), err_val.clone());
+                        }
+                        self.eval_inner(catch_block)
+                    }
+                }
+            }
+            Expr::Throw(expr) => {
+                let val = self.eval_inner(expr);
+                panic!(format!("{:?}", val));
+            }
+            Expr::Import(path) => {
+                use std::fs;
+                let code = fs::read_to_string(path).unwrap_or_else(|_| "".to_string());
+                let mut lexer = super::lexer::Lexer::new(&code);
+                let mut tokens = Vec::new();
+                loop {
+                    let tok = lexer.next_token();
+                    if tok == super::lexer::Token::EOF { break; }
+                    tokens.push(tok);
+                }
+                let mut parser = super::parser::Parser::new(tokens);
+                if let Some(expr) = parser.parse() {
+                    let mut sub_interpreter = Interpreter {
+                        env: self.env.clone(),
+                        functions: self.functions.clone(),
+                    };
+                    let result = sub_interpreter.eval(&expr);
+                    // Merge imported env and functions
+                    self.env.extend(sub_interpreter.env);
+                    self.functions.extend(sub_interpreter.functions);
+                    result
+                } else {
+                    Value::Error(format!("Failed to import {}", path))
+                }
+            }
+        }
+    }
+
+    // Helper for pattern matching
+    fn pattern_match(val: &Value, pat: &Value) -> bool {
+        match (val, pat) {
+            (Value::Number(a), Value::Number(b)) => (a == b),
+            (Value::String(a), Value::String(b)) => (a == b),
+            (Value::Bool(a), Value::Bool(b)) => (a == b),
+            (Value::Null, Value::Null) => true,
+            (Value::Array(a), Value::Array(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            // Wildcard pattern: _
+            (_, Value::String(s)) if s == "_" => true,
+            _ => false,
         }
     }
 }

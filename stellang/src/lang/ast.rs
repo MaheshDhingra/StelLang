@@ -51,7 +51,55 @@ pub enum Expr {
         expr: Box<Expr>,
     },
     Return(Box<Expr>),
-    // === Control flow ===
     Break,
     Continue,
+    Let {
+        name: String,
+        expr: Box<Expr>,
+    },
+    Const {
+        name: String,
+        expr: Box<Expr>,
+    },
+    Bool(bool),
+    Null,
+    // === Pattern matching, structs, enums ===
+    Match {
+        expr: Box<Expr>,
+        arms: Vec<(Expr, Expr)>, // (pattern, result)
+    },
+    StructDef {
+        name: String,
+        fields: Vec<String>,
+    },
+    StructInit {
+        name: String,
+        fields: Vec<(String, Expr)>,
+    },
+    EnumDef {
+        name: String,
+        variants: Vec<String>,
+    },
+    EnumInit {
+        name: String,
+        variant: String,
+        value: Option<Box<Expr>>,
+    },
+    For {
+        var: String,
+        iter: Box<Expr>,
+        body: Box<Expr>,
+    },
+    TryCatch {
+        try_block: Box<Expr>,
+        catch_var: Option<String>,
+        catch_block: Box<Expr>,
+    },
+    Throw(Box<Expr>),
+    TupleLiteral(Vec<Expr>),
+    Destructure {
+        names: Vec<String>,
+        expr: Box<Expr>,
+    },
+    Import(String),
 }
