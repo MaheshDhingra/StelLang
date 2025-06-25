@@ -102,4 +102,28 @@ pub enum Expr {
         expr: Box<Expr>,
     },
     Import(String),
+    LetTyped {
+        name: String,
+        ty: String,
+        expr: Box<Expr>,
+    },
+    ConstTyped {
+        name: String,
+        ty: String,
+        expr: Box<Expr>,
+    },
+    Global {
+        name: String,
+        expr: Box<Expr>,
+    },
+    Static {
+        name: String,
+        expr: Box<Expr>,
+    },
+    Defer(Box<Expr>),
+    Switch {
+        expr: Box<Expr>,
+        cases: Vec<(Expr, Expr)>,
+        default: Option<Box<Expr>>,
+    },
 }
