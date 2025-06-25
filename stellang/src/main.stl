@@ -1,0 +1,5 @@
+# StelLang Example Program
+x = 10
+y = 30
+z = x * 2 + y / 5
+print(z)
