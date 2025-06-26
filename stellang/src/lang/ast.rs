@@ -1,6 +1,6 @@
 // AST definitions for StelLang
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Integer(i64),
     Float(f64),

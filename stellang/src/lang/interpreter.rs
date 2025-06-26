@@ -3,13 +3,15 @@
 use super::ast::Expr;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
     String(String),
     Array(Vec<Value>),
     Map(HashMap<String, Value>),
     Error(String),
+    Bool(bool),
+    Null,
 }
 
 pub struct Interpreter {
@@ -184,17 +186,19 @@ impl Interpreter {
                             Value::Map(map) => println!("{:?}", map),
                             Value::Error(e) => println!("Error: {}", e),
                             v => match v {
-                                Value::Number(n) if *n == 1.0 => println!("true"),
-                                Value::Number(n) if *n == 0.0 => println!("false"),
+                                Value::Number(n) if n == 1.0 => println!("true"),
+                                Value::Number(n) if n == 0.0 => println!("false"),
                                 _ => println!("null"),
                             },
+                        }
                     }
                     Value::Number(0.0)
                 } else if name == "sqrt" {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
                             Value::Number(n) => Value::Number(n.sqrt()),
-                            _ => Value::Error("sqrt expects a number".to_string()),
+                            Value::Error(_) => Value::String("error".to_string()),
+                            _ => Value::Error("Invalid type for sqrt".to_string()),
                         }
                     } else {
                         Value::Error("sqrt expects 1 argument".to_string())
@@ -203,7 +207,8 @@ impl Interpreter {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
                             Value::Number(n) => Value::Number(n.sin()),
-                            _ => Value::Error("sin expects a number".to_string()),
+                            Value::Error(_) => Value::String("error".to_string()),
+                            _ => Value::Error("Invalid type for sin".to_string()),
                         }
                     } else {
                         Value::Error("sin expects 1 argument".to_string())
@@ -212,7 +217,8 @@ impl Interpreter {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
                             Value::Number(n) => Value::Number(n.cos()),
-                            _ => Value::Error("cos expects a number".to_string()),
+                            Value::Error(_) => Value::String("error".to_string()),
+                            _ => Value::Error("Invalid type for cos".to_string()),
                         }
                     } else {
                         Value::Error("cos expects 1 argument".to_string())
@@ -221,7 +227,8 @@ impl Interpreter {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
                             Value::Number(n) => Value::Number(n.abs()),
-                            _ => Value::Error("abs expects a number".to_string()),
+                            Value::Error(_) => Value::String("error".to_string()),
+                            _ => Value::Error("Invalid type for abs".to_string()),
                         }
                     } else {
                         Value::Error("abs expects 1 argument".to_string())
@@ -254,6 +261,7 @@ impl Interpreter {
                             Value::Array(_) => Value::String("array".to_string()),
                             Value::Map(_) => Value::String("map".to_string()),
                             Value::Error(_) => Value::String("error".to_string()),
+                            Value::Bool(_) | Value::Null => Value::String("unknown".to_string()),
                         }
                     } else {
                         Value::Error("type_of expects 1 argument".to_string())
@@ -266,6 +274,7 @@ impl Interpreter {
                             Value::Array(arr) => Value::String(format!("{:?}", arr)),
                             Value::Map(map) => Value::String(format!("{:?}", map)),
                             Value::Error(e) => Value::String(format!("Error: {}", e)),
+                            Value::Bool(_) | Value::Null => Value::Error("Invalid type".to_string()),
                         }
                     } else {
                         Value::Error("to_string expects 1 argument".to_string())
@@ -549,8 +558,19 @@ impl Interpreter {
                 match result {
                     Ok(v) => v,
                     Err(e) => {
+                        // Try to extract the error value from panic
                         let err_val = if let Some(s) = e.downcast_ref::<String>() {
-                            Value::Error(s.clone())
+                            if s.starts_with("Error: ") {
+                                Value::Error(s[7..].to_string())
+                            } else {
+                                Value::Error(s.clone())
+                            }
+                        } else if let Some(s) = e.downcast_ref::<&str>() {
+                            if s.starts_with("Error: ") {
+                                Value::Error(s[7..].to_string())
+                            } else {
+                                Value::Error(s.to_string())
+                            }
                         } else {
                             Value::Error("Unknown error".to_string())
                         };
@@ -563,7 +583,11 @@ impl Interpreter {
             }
             Expr::Throw(expr) => {
                 let val = self.eval_inner(expr);
-                panic!(format!("{:?}", val));
+                match val {
+                    Value::Error(e) => panic!("Error: {}", e),
+                    Value::String(s) => panic!("Error: {}", s),
+                    _ => panic!("Error: thrown value"),
+                }
             }
             Expr::Import(path) => {
                 use std::fs;
@@ -590,15 +614,16 @@ impl Interpreter {
                     Value::Error(format!("Failed to import {}", path))
                 }
             }
+            _ => Value::Error("Not implemented".to_string()),
         }
     }
 
     // Helper for pattern matching
     fn pattern_match(val: &Value, pat: &Value) -> bool {
         match (val, pat) {
-            (Value::Number(a), Value::Number(b)) => (a == b),
-            (Value::String(a), Value::String(b)) => (a == b),
-            (Value::Bool(a), Value::Bool(b)) => (a == b),
+            (Value::Number(a), Value::Number(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::Null, Value::Null) => true,
             (Value::Array(a), Value::Array(b)) => a == b,
             (Value::Map(a), Value::Map(b)) => a == b,

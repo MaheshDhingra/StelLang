@@ -32,13 +32,14 @@ impl Parser {
     pub fn parse(&mut self) -> Option<Expr> {
         let mut exprs = Vec::new();
         while self.pos < self.tokens.len() {
-            if let Some(expr) = self.parse_block() {
+            // Accept any top-level statement, not just blocks
+            if let Some(expr) = self.parse_expr() {
                 exprs.push(expr);
             } else {
                 break;
             }
-            // Skip semicolons between top-level statements
-            if let Token::Semicolon = self.peek() {
+            // Skip optional semicolons between top-level statements
+            while let Token::Semicolon = self.peek() {
                 self.advance();
             }
         }
@@ -58,18 +59,21 @@ impl Parser {
             while !matches!(self.peek(), Token::RBrace | Token::EOF) {
                 if let Some(expr) = self.parse_expr() {
                     exprs.push(expr);
+                } else {
+                    // If parse_expr returns None, advance to avoid infinite loop
+                    self.advance();
                 }
-                if let Token::Semicolon = self.peek() {
+                // Accept optional semicolons between statements
+                while let Token::Semicolon = self.peek() {
                     self.advance();
                 }
             }
             if let Token::RBrace = self.peek() {
                 self.advance();
             }
-            Some(Expr::Block(exprs))
-        } else {
-            self.parse_expr()
+            return Some(Expr::Block(exprs));
         }
+        None
     }
 
     fn parse_expr(&mut self) -> Option<Expr> {
@@ -83,7 +87,24 @@ impl Parser {
             Token::Try => self.parse_try_catch(),
             Token::Throw => self.parse_throw(),
             Token::Import => self.parse_import(),
+            Token::If => self.parse_if(),
+            Token::While => self.parse_while(),
+            Token::Fn => self.parse_fn_def(),
+            Token::Return => self.parse_return(),
+            Token::Break => { self.advance(); Some(Expr::Break) },
+            Token::Continue => { self.advance(); Some(Expr::Continue) },
             _ => self.parse_logical_or(),
+        }
+    }
+
+    fn parse_return(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'return'
+        // Allow return without an expression (for void returns)
+        if matches!(self.peek(), Token::Semicolon | Token::RBrace | Token::EOF) {
+            Some(Expr::Return(Box::new(Expr::Null)))
+        } else {
+            let expr = self.parse_expr()?;
+            Some(Expr::Return(Box::new(expr)))
         }
     }
 
@@ -273,6 +294,82 @@ impl Parser {
         Some(Expr::Throw(Box::new(expr)))
     }
 
+    fn parse_if(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'if'
+        let cond = self.parse_expr()?;
+        let then_branch = self.parse_block()?;
+        let else_branch = if let Token::Else = self.peek() {
+            self.advance();
+            Some(Box::new(self.parse_block()?))
+        } else {
+            None
+        };
+        Some(Expr::If {
+            cond: Box::new(cond),
+            then_branch: Box::new(then_branch),
+            else_branch,
+        })
+    }
+
+    fn parse_while(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'while'
+        let cond = self.parse_expr()?;
+        let body = self.parse_block()?;
+        Some(Expr::While {
+            cond: Box::new(cond),
+            body: Box::new(body),
+        })
+    }
+
+    fn parse_fn_def(&mut self) -> Option<Expr> {
+        self.advance(); // consume 'fn'
+        let name = if let Token::Ident(n) = self.peek() {
+            let n = n.clone();
+            self.advance();
+            n
+        } else {
+            return None;
+        };
+        if let Token::LParen = self.peek() {
+            self.advance();
+        } else {
+            return None;
+        }
+        let mut params = Vec::new();
+        if let Token::RParen = self.peek() {
+            self.advance();
+        } else {
+            loop {
+                if let Token::Ident(n) = self.peek() {
+                    params.push(n.clone());
+                    self.advance();
+                } else {
+                    return None;
+                }
+                if let Token::Comma = self.peek() {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            if let Token::RParen = self.peek() {
+                self.advance();
+            } else {
+                return None;
+            }
+        }
+        // Accept optional semicolons before the block
+        while let Token::Semicolon = self.peek() {
+            self.advance();
+        }
+        let body = self.parse_block()?;
+        Some(Expr::FnDef {
+            name,
+            params,
+            body: Box::new(body),
+        })
+    }
+
     fn parse_logical_or(&mut self) -> Option<Expr> {
         let mut node = self.parse_logical_and()?;
         while let Token::Or = self.peek() {
@@ -426,6 +523,7 @@ impl Parser {
 
     fn parse_primary(&mut self) -> Option<Expr> {
         match self.peek() {
+            Token::LBrace => self.parse_block(),
             Token::True => { self.advance(); Some(Expr::Bool(true)) }
             Token::False => { self.advance(); Some(Expr::Bool(false)) }
             Token::Null => { self.advance(); Some(Expr::Null) }
@@ -473,7 +571,7 @@ impl Parser {
                 self.advance();
                 if let Token::Comma = self.peek() {
                     // Destructuring assignment: (a, b) = ...
-                    let mut names = vec![name];
+                    let mut names = vec![name.clone()];
                     while let Token::Comma = self.peek() {
                         self.advance();
                         if let Token::Ident(n) = self.peek() {
@@ -485,7 +583,7 @@ impl Parser {
                     }
                     if let Token::Assign = self.peek() {
                         self.advance();
-                        let expr = self.parse_expr()?
+                        let expr = self.parse_expr()?;
                         return Some(Expr::Destructure { names, expr: Box::new(expr) });
                     }
                 }
@@ -500,7 +598,7 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::lang::lexer::{Lexer, Token};
-
+    
     #[test]
     fn test_parse_simple_arithmetic() {
         let mut lexer = Lexer::new("1 + 2 * 3");
@@ -523,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_parse_assignment() {
-        let mut lexer = Lexer::new("x = 42");
+        let mut lexer = Lexer::new("x = 1");
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
@@ -532,11 +630,24 @@ mod tests {
             }
             tokens.push(tok);
         }
-        let mut parser = Parser::new(tokens);
-        let ast = parser.parse().unwrap();
+        println!("TOKENS: {:?}", tokens);
+        let mut parser = Parser::new(tokens.clone());
+        let ast = parser.parse();
+        println!("AST: {:?}", ast);
+        let ast = ast.expect("Parser returned None");
         match ast {
-            Expr::Assign { name, .. } => assert_eq!(name, "x"),
-            _ => panic!("Expected assignment"),
+            Expr::Assign { ref name, .. } => {
+                assert_eq!(name, "x");
+            }
+            Expr::Block(ref exprs) => {
+                assert_eq!(exprs.len(), 1);
+                if let Expr::Assign { name, .. } = &exprs[0] {
+                    assert_eq!(name, "x");
+                } else {
+                    panic!("Expected assignment");
+                }
+            }
+            _ => panic!("Expected assignment or block expression"),
         }
     }
 
@@ -551,8 +662,11 @@ mod tests {
             }
             tokens.push(tok);
         }
-        let mut parser = Parser::new(tokens);
-        let ast = parser.parse().unwrap();
+        println!("TOKENS: {:?}", tokens);
+        let mut parser = Parser::new(tokens.clone());
+        let ast = parser.parse();
+        println!("AST: {:?}", ast);
+        let ast = ast.expect("Parser returned None");
         match ast {
             Expr::Block(exprs) => {
                 assert_eq!(exprs.len(), 2);
@@ -669,7 +783,7 @@ mod tests {
                 if let Expr::Block(exprs) = *body {
                     assert_eq!(exprs.len(), 1);
                     if let Expr::Return(ref expr) = &exprs[0] {
-                        if let Expr::BinaryOp { op, .. } = **expr {
+                        if let Expr::BinaryOp { ref op, .. } = **expr {
                             assert_eq!(op, "+");
                         } else {
                             panic!("Expected binary operation");

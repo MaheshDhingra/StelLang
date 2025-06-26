@@ -28,13 +28,22 @@ cargo build
 
 ### 2. Run the REPL
 ```sh
-cargo run
+cargo run --bin stellang
 ```
 
 ### 3. Run a Script
-Write your StelLang code in `src/main.stl` and run:
+Write your StelLang code in `src/main.stel` and run:
 ```sh
-cargo run
+cargo run --bin stellang
+```
+
+### 4. Run the Package Manager (pico)
+```sh
+cargo run --bin pico -- <command>
+```
+For example, to initialize a project:
+```sh
+cargo run --bin pico -- init
 ```
 
 ## Language Examples
@@ -255,7 +264,7 @@ cargo run --bin pico -- publish
 - Enter `print(123)` or `print(x)` to print values.
 
 ### 6. Scripts
-- Edit `src/main.stl` with any StelLang code and run `cargo run` to execute it.
+- Edit `src/main.stel` with any StelLang code and run `cargo run` to execute it.
 
 ### Pattern Matching
 ```stel
@@ -341,6 +350,6 @@ print(interp("Hello, {name}! Your number is {n}.", vars))
 
 ### Import/Module System
 ```stel
-import "utils.stl"
-# Now you can use functions/variables from utils.stl
+import "utils.stel"
+# Now you can use functions/variables from utils.stel
 ```

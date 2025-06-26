@@ -1,0 +1,189 @@
+# StelLang Example Program
+
+# Variables and Arithmetic
+x = 10
+y = 30
+z = x * 2 + y / 5
+print(z)
+
+# If/Else
+if z > 20 {
+    print("Large value!")
+} else {
+    print("Small value!")
+}
+
+# While Loop
+count = 0
+while count < 5 {
+    print(count)
+    count = count + 1
+}
+
+# Functions
+fn add(a, b) {
+    return a + b
+}
+result = add(3, 4)
+print(result)
+
+# Break and Continue
+count = 0
+while count < 10 {
+    if count == 3 {
+        count = count + 1
+        continue
+    }
+    if count == 7 {
+        break
+    }
+    print(count)
+    count = count + 1
+}
+
+# Logical Operators
+a = 1
+b = 0
+if a and not b {
+    print("a is true and b is false!")
+}
+if a or b {
+    print("at least one is true!")
+}
+
+# Variable Declarations
+let a = 42
+const b = "hello"
+print(a)
+print(b)
+
+# Boolean and Null Literals
+let t = true
+let f = false
+let n = null
+print(t)
+print(f)
+print(n)
+
+# Input
+your_name = input()
+print("Hello, " + your_name)
+
+# Built-in Math and Array Functions
+print(sqrt(16))
+print(abs(-5))
+print(pow(2, 8))
+arr = range(1, 5)
+print(arr)
+print(sum(arr))
+print(min(3, 7))
+print(max(3, 7))
+
+# Array Utilities
+print(reverse(arr))
+print(join(arr, ","))
+print(split("a,b,c", ","))
+print(sort([3,1,2]))
+
+# Higher-Order Functions
+squared = map(arr, fn(x) { return x * x })
+evens = filter(arr, fn(x) { return x % 2 == 0 })
+first_even = find(arr, fn(x) { return x % 2 == 0 })
+sum_reduce = reduce(arr, fn(acc, x) { return acc + x }, 0)
+pairs = zip([1,2,3], ["a","b","c"])
+print(squared)
+print(evens)
+print(first_even)
+print(sum_reduce)
+print(pairs)
+
+# Find, Reduce, Zip, and More
+arr2 = [10, 20, 30, 40]
+found = find(arr2, fn(x) { return x > 15 })
+reduced = reduce(arr2, fn(acc, x) { return acc * x }, 1)
+zipped = zip(arr, arr2)
+print(found)
+print(reduced)
+print(zipped)
+
+# String and Array Manipulation
+s = "hello,world,stel"
+split_arr = split(s, ",")
+joined = join(split_arr, "-")
+reversed = reverse(s)
+print(split_arr)
+print(joined)
+print(reversed)
+
+# Sorting
+unsorted = [5, 2, 9, 1]
+print(sort(unsorted))
+
+# Map/Filter/Reduce with Strings
+words = split("one two three", " ")
+uppercased = map(words, fn(w) { return w + "!" })
+long_words = filter(words, fn(w) { return len(w) > 3 })
+concat = reduce(words, fn(acc, w) { return acc + w }, "")
+print(uppercased)
+print(long_words)
+print(concat)
+
+# Pattern Matching
+x = 2
+match x {
+    1 => print("one"),
+    2 => print("two"),
+    _ => print("other"),
+}
+
+# Structs
+struct Point { x, y }
+p = Point { x: 1, y: 2 }
+print(p)
+
+# Enums
+enum Color { Red, Green, Blue }
+c = Color::Red
+print(c)
+
+# For Loop
+for i in arr {
+    print("for-loop:", i)
+}
+
+# Map/Array Utilities
+m = {"a": 1, "b": 2, "c": 3}
+print(map_keys(m))
+print(map_values(m))
+print(array_contains(arr, 3))
+print(array_index_of(arr, 3))
+
+# Error Handling
+try {
+    throw("fail!")
+} catch err {
+    print("Caught error:", err)
+}
+
+# Tuple Literals and Destructuring
+(a, b) = (1, 2)
+print(a)
+print(b)
+
+# More Built-ins
+nums = [1, 2, 3, 4, 5]
+print(all(nums, fn(x) { return x > 0 }))
+print(any(nums, fn(x) { return x == 3 }))
+print(flatten([[1,2],[3,4],[5]]))
+print(unique([1,2,2,3,3,3,4]))
+print(count(nums, 3))
+print(repeat("hi", 3))
+print(enumerate(["a","b","c"]))
+
+# String Interpolation
+vars = {"name": "Stel", "n": 42}
+print(interp("Hello, {name}! Your number is {n}.", vars))
+
+# Import Example (assume 'utils.stl' exists)
+import "utils.stl"
+# Now you can use functions/variables from utils.stl
