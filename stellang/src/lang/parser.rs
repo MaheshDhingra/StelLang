@@ -524,6 +524,37 @@ impl Parser {
     fn parse_primary(&mut self) -> Option<Expr> {
         match self.peek() {
             Token::LBrace => self.parse_block(),
+            Token::LBracket => {
+                self.advance();
+                let mut items = Vec::new();
+                if let Token::RBracket = self.peek() {
+                    self.advance();
+                    return Some(Expr::ArrayLiteral(items));
+                }
+                loop {
+                    items.push(self.parse_expr()?);
+                    if let Token::Comma = self.peek() {
+                        self.advance();
+                    } else {
+                        break;
+                    }
+                }
+                if let Token::RBracket = self.peek() {
+                    self.advance();
+                } else {
+                    // Error: expected closing bracket
+                    return None;
+                }
+                Some(Expr::ArrayLiteral(items))
+            }
+            Token::Print => {
+                self.advance();
+                Some(Expr::Ident("print".to_string()))
+            }
+            Token::Input => {
+                self.advance();
+                Some(Expr::Ident("input".to_string()))
+            }
             Token::True => { self.advance(); Some(Expr::Bool(true)) }
             Token::False => { self.advance(); Some(Expr::Bool(false)) }
             Token::Null => { self.advance(); Some(Expr::Null) }
@@ -544,26 +575,12 @@ impl Parser {
             }
             Token::LParen => {
                 self.advance();
-                let mut items = Vec::new();
+                let expr = self.parse_expr()?;
                 if let Token::RParen = self.peek() {
                     self.advance();
-                    return Some(Expr::TupleLiteral(items));
-                }
-                loop {
-                    items.push(self.parse_expr()?);
-                    if let Token::Comma = self.peek() {
-                        self.advance();
-                    } else {
-                        break;
-                    }
-                }
-                if let Token::RParen = self.peek() {
-                    self.advance();
-                }
-                if items.len() == 1 {
-                    Some(items.remove(0))
+                    Some(expr)
                 } else {
-                    Some(Expr::TupleLiteral(items))
+                    None
                 }
             }
             Token::Ident(name) => {

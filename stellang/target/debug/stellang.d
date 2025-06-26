@@ -1,1 +1,0 @@
-C:\Users\istuf\Desktop\StelLang\stellang\target\debug\stellang.exe: C:\Users\istuf\Desktop\StelLang\stellang\src\lang\ast.rs C:\Users\istuf\Desktop\StelLang\stellang\src\lang\interpreter.rs C:\Users\istuf\Desktop\StelLang\stellang\src\lang\lexer.rs C:\Users\istuf\Desktop\StelLang\stellang\src\lang\parser.rs C:\Users\istuf\Desktop\StelLang\stellang\src\main.rs

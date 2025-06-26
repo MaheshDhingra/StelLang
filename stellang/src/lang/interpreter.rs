@@ -124,7 +124,7 @@ impl Interpreter {
             Expr::Assign { name, expr } => {
                 let val = self.eval_inner(expr);
                 self.env.insert(name.clone(), val.clone());
-                val
+                val // Return the assigned value, not just the first element
             }
             Expr::Let { name, expr } => {
                 let val = self.eval_inner(expr);
@@ -179,20 +179,9 @@ impl Interpreter {
                 if name == "print" {
                     for arg in args {
                         let val = self.eval_inner(arg);
-                        match val {
-                            Value::Number(n) => println!("{}", n),
-                            Value::String(s) => println!("{}", s),
-                            Value::Array(arr) => println!("{:?}", arr),
-                            Value::Map(map) => println!("{:?}", map),
-                            Value::Error(e) => println!("Error: {}", e),
-                            v => match v {
-                                Value::Number(n) if n == 1.0 => println!("true"),
-                                Value::Number(n) if n == 0.0 => println!("false"),
-                                _ => println!("null"),
-                            },
-                        }
+                        println!("{}", val.to_display_string());
                     }
-                    Value::Number(0.0)
+                    Value::Null // Return Null instead of Number(0.0)
                 } else if name == "sqrt" {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
@@ -253,7 +242,7 @@ impl Interpreter {
                     } else {
                         Value::Error("len expects 1 argument".to_string())
                     }
-                } else if name == "type_of" {
+                } else if name == "type_of" || name == "type" {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
                             Value::Number(_) => Value::String("number".to_string()),
@@ -261,10 +250,11 @@ impl Interpreter {
                             Value::Array(_) => Value::String("array".to_string()),
                             Value::Map(_) => Value::String("map".to_string()),
                             Value::Error(_) => Value::String("error".to_string()),
-                            Value::Bool(_) | Value::Null => Value::String("unknown".to_string()),
+                            Value::Bool(_) => Value::String("bool".to_string()),
+                            Value::Null => Value::String("null".to_string()),
                         }
                     } else {
-                        Value::Error("type_of expects 1 argument".to_string())
+                        Value::Error("type expects 1 argument".to_string())
                     }
                 } else if name == "to_string" {
                     if args.len() == 1 {
@@ -630,6 +620,32 @@ impl Interpreter {
             // Wildcard pattern: _
             (_, Value::String(s)) if s == "_" => true,
             _ => false,
+        }
+    }
+}
+
+impl Value {
+    pub fn to_display_string(&self) -> String {
+        match self {
+            Value::Number(n) => {
+                if n.fract() == 0.0 {
+                    format!("{}", *n as i64)
+                } else {
+                    format!("{}", n)
+                }
+            }
+            Value::String(s) => s.clone(),
+            Value::Array(arr) => {
+                let items: Vec<String> = arr.iter().map(|v| v.to_display_string()).collect();
+                format!("[{}]", items.join(", "))
+            }
+            Value::Map(map) => {
+                let items: Vec<String> = map.iter().map(|(k, v)| format!("{}: {}", k, v.to_display_string())).collect();
+                format!("{{{}}}", items.join(", "))
+            }
+            Value::Error(e) => format!("Error: {}", e),
+            Value::Bool(b) => format!("{}", b),
+            Value::Null => "null".to_string(),
         }
     }
 }
