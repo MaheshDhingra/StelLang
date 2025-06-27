@@ -19,25 +19,30 @@ A fast, expressive, Rust-powered programming language designed for engineers.
 - Structs and enums (syntax only, WIP)
 - Import/module system
 - **Extensive Python built-ins**: abs, all, any, ascii, bin, bool, breakpoint, bytearray, bytes, callable, chr, classmethod, compile, complex, delattr, dict, dir, divmod, enumerate, eval, exec, filter, float, format, frozenset, getattr, globals, hasattr, hash, help, hex, id, input, int, isinstance, issubclass, iter, len, list, locals, map, max, memoryview, min, next, object, oct, open, ord, pow, print, property, range, repr, reversed, round, set, setattr, slice, sorted, staticmethod, str, sum, super, tuple, type, vars, zip, __import__
+- **Python-style Exception Hierarchy**: All built-in exceptions (BaseException, Exception, TypeError, ValueError, IndexError, KeyError, etc.) are supported as first-class objects. You can raise, catch, and inspect exceptions just like in Python. Exception objects support `args`, `context`, `cause`, `suppress_context`, and `notes`.
 
-## Devlog (2025-06-27)
+## Exception Handling
 
-### Interpreter & Built-ins
-- Implemented or stubbed **all major Python built-ins**: abs, all, any, ascii, bin, bool, breakpoint, bytearray, bytes, callable, chr, classmethod, compile, complex, delattr, dict, dir, divmod, enumerate, eval, exec, filter, float, format, frozenset, getattr, globals, hasattr, hash, help, hex, id, input, int, isinstance, issubclass, iter, len, list, locals, map, max, memoryview, min, next, object, oct, open, ord, pow, print, property, range, repr, reversed, round, set, setattr, slice, sorted, staticmethod, str, sum, super, tuple, type, vars, zip, __import__.
-- Added error stubs for not-yet-supported built-ins (e.g., open, property, memoryview, classmethod, staticmethod, compile, eval, exec, __import__, breakpoint, globals, locals, super).
-- Improved type handling for isinstance, issubclass, and more.
-- All built-ins are now available in the REPL and scripts.
+StelLang supports Python-style exceptions. Example:
 
-### Codebase
-- No build errors in any Rust source files.
-- All main modules (`lexer.rs`, `parser.rs`, `ast.rs`, `interpreter.rs`, `main.rs`) are up to date and error-free.
-- Documentation and examples updated to reflect new built-ins.
+```stel
+try {
+    let x = [1,2][5]  # Raises IndexError
+} catch e {
+    print("Caught exception:", e)
+    print("Type:", type(e))
+    print("Args:", e.args)
+}
+```
 
-### Next Steps
-- Expand support for advanced features (e.g., aiter, anext, async, comprehensions, decorators).
-- Add more robust error handling and recovery in the parser.
-- Add a `doc()` built-in for documentation of built-ins and user functions.
-- Add REPL history and more interactive features.
+You can raise exceptions manually:
+
+```stel
+throw Exception("Something went wrong!")
+throw TypeError("Bad type!")
+```
+
+All built-in exceptions are available and follow the Python hierarchy. Exception objects have fields: `args`, `context`, `cause`, `suppress_context`, `notes`.
 
 ---
 

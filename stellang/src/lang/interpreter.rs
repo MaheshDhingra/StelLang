@@ -3,6 +3,8 @@
 use super::ast::Expr;
 use std::collections::{HashMap, HashSet};
 use std::ops::Range as StdRange;
+mod exceptions;
+use exceptions::{Exception, ExceptionKind};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -25,7 +27,8 @@ pub enum Value {
     None,
     NotImplemented,
     Ellipsis,
-    Error(String),
+    Exception(Exception),
+    Error(String), // Deprecated: use Exception
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -91,15 +94,20 @@ impl Interpreter {
                 let idx = self.eval_inner(index);
                 match (coll, idx) {
                     (Value::List(arr), Value::Int(n)) => {
-                        arr.get(n as usize).cloned().unwrap_or(Value::Int(0))
+                        if n < 0 || n as usize >= arr.len() {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("list index {} out of range", n)]))
+                        } else {
+                            arr.get(n as usize).cloned().unwrap_or(Value::None)
+                        }
                     }
                     (Value::Dict(map), Value::Str(s)) => {
-                        map.get(&s).cloned().unwrap_or(Value::Int(0))
+                        map.get(&s).cloned().unwrap_or(Value::Exception(Exception::new(ExceptionKind::KeyError, vec![s])))
                     }
                     (Value::Dict(map), Value::Int(n)) => {
-                        map.get(&n.to_string()).cloned().unwrap_or(Value::Int(0))
+                        let key = n.to_string();
+                        map.get(&key).cloned().unwrap_or(Value::Exception(Exception::new(ExceptionKind::KeyError, vec![key])))
                     }
-                    _ => Value::Int(0),
+                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Invalid index operation".to_string()]))
                 }
             }
             Expr::AssignIndex { collection, index, expr } => {
@@ -205,7 +213,7 @@ impl Interpreter {
             }
             Expr::Assign { name, expr } => {
                 if name == "True" || name == "False" || name == "None" || name == "__debug__" {
-                    Value::Error("Assignment to constant is not allowed".to_string())
+                    Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Assignment to constant is not allowed".to_string()]))
                 } else {
                     let val = self.eval_inner(expr);
                     self.env.insert(name.clone(), val.clone());
@@ -262,830 +270,188 @@ impl Interpreter {
                 Value::Int(0)
             }
             Expr::FnCall { name, args } => {
-                if name == "print" {
-                    if args.is_empty() {
-                        println!("");
-                    } else {
-                        for arg in args {
-                            let val = self.eval_inner(arg);
-                            println!("{}", val.to_display_string());
+                // --- Bytes and ByteArray methods ---
+                let is_bytes_method = [
+                    "isalnum", "isalpha", "isascii", "isdigit", "islower", "isspace", "istitle", "isupper", "lower", "splitlines", "swapcase", "title", "upper", "zfill"
+                ].contains(&name.as_str());
+                if is_bytes_method && args.len() >= 1 {
+                    let (obj, rest) = (self.eval_inner(&args[0]), &args[1..]);
+                    let as_bytes = |v: &Value| match v {
+                        Value::Bytes(b) | Value::ByteArray(b) => Some(b),
+                        _ => None,
+                    };
+                    let make_result = |orig: &Value, b: Vec<u8>| match orig {
+                        Value::Bytes(_) => Value::Bytes(b),
+                        Value::ByteArray(_) => Value::ByteArray(b),
+                        _ => Value::Error("Not a bytes or bytearray object".to_string()),
+                    };
+                    match name.as_str() {
+                        "isalnum" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let isalnum = !b.is_empty() && b.iter().all(|c| (b'a' <= *c && *c <= b'z') || (b'A' <= *c && *c <= b'Z') || (b'0' <= *c && *c <= b'9'));
+                                Value::Bool(isalnum)
+                            } else { Value::Error("isalnum: not bytes/bytearray".to_string()) }
                         }
-                    }
-                    Value::Null // Return Null instead of Number(0.0)
-                } else if name == "clear" || name == "cls" {
-                    // Clear the terminal screen (Windows and Unix)
-                    #[cfg(windows)] { std::process::Command::new("cmd").args(["/C", "cls"]).status().ok(); }
-                    #[cfg(not(windows))] { std::process::Command::new("clear").status().ok(); }
-                    Value::Null
-                } else if name == "sqrt" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Float((n as f64).sqrt()),
-                            Value::Float(n) => Value::Float(n.sqrt()),
-                            Value::Error(_) => Value::String("error".to_string()),
-                            _ => Value::Error("Invalid type for sqrt".to_string()),
+                        "isalpha" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let isalpha = !b.is_empty() && b.iter().all(|c| (b'a' <= *c && *c <= b'z') || (b'A' <= *c && *c <= b'Z'));
+                                Value::Bool(isalpha)
+                            } else { Value::Error("isalpha: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("sqrt expects 1 argument".to_string())
-                    }
-                } else if name == "sin" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Float((n as f64).sin()),
-                            Value::Float(n) => Value::Float(n.sin()),
-                            Value::Error(_) => Value::String("error".to_string()),
-                            _ => Value::Error("Invalid type for sin".to_string()),
+                        "isascii" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let isascii = b.iter().all(|c| *c <= 0x7F);
+                                Value::Bool(isascii)
+                            } else { Value::Error("isascii: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("sin expects 1 argument".to_string())
-                    }
-                } else if name == "cos" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Float((n as f64).cos()),
-                            Value::Float(n) => Value::Float(n.cos()),
-                            Value::Error(_) => Value::String("error".to_string()),
-                            _ => Value::Error("Invalid type for cos".to_string()),
+                        "isdigit" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let isdigit = !b.is_empty() && b.iter().all(|c| b'0' <= *c && *c <= b'9');
+                                Value::Bool(isdigit)
+                            } else { Value::Error("isdigit: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("cos expects 1 argument".to_string())
-                    }
-                } else if name == "abs" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Int(n.abs()),
-                            Value::Float(n) => Value::Float(n.abs()),
-                            Value::Error(_) => Value::String("error".to_string()),
-                            _ => Value::Error("Invalid type for abs".to_string()),
+                        "islower" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let has_lower = b.iter().any(|c| b'a' <= *c && *c <= b'z');
+                                let has_upper = b.iter().any(|c| b'A' <= *c && *c <= b'Z');
+                                Value::Bool(has_lower && !has_upper)
+                            } else { Value::Error("islower: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("abs expects 1 argument".to_string())
-                    }
-                } else if name == "pow" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Int(a), Value::Int(b)) => Value::Float((a as f64).powf(b as f64)),
-                            (Value::Float(a), Value::Float(b)) => Value::Float(a.powf(b)),
-                            _ => Value::Error("pow expects two numbers".to_string()),
+                        "isspace" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let isspace = !b.is_empty() && b.iter().all(|c| matches!(c, b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c));
+                                Value::Bool(isspace)
+                            } else { Value::Error("isspace: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("pow expects 2 arguments".to_string())
-                    }
-                } else if name == "len" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::Int(arr.len() as i64),
-                            Value::Dict(map) => Value::Int(map.len() as i64),
-                            Value::Str(s) => Value::Int(s.len() as i64),
-                            _ => Value::Error("len expects array, map, or string".to_string()),
+                        "istitle" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let mut prev_cased = false;
+                                let mut is_title = false;
+                                let mut seen = false;
+                                for &c in b.iter() {
+                                    let is_upper = b'A' <= c && c <= b'Z';
+                                    let is_lower = b'a' <= c && c <= b'z';
+                                    if is_upper {
+                                        if prev_cased { is_title = false; break; }
+                                        is_title = true;
+                                        prev_cased = true;
+                                        seen = true;
+                                    } else if is_lower {
+                                        if !prev_cased { is_title = false; break; }
+                                        prev_cased = true;
+                                        seen = true;
+                                    } else {
+                                        prev_cased = false;
+                                    }
+                                }
+                                Value::Bool(seen && is_title)
+                            } else { Value::Error("istitle: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("len expects 1 argument".to_string())
-                    }
-                } else if name == "type_of" || name == "type" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => {
-                                if n == 0 {
-                                    Value::String("integer".to_string())
+                        "isupper" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let has_upper = b.iter().any(|c| b'A' <= *c && *c <= b'Z');
+                                let has_lower = b.iter().any(|c| b'a' <= *c && *c <= b'z');
+                                Value::Bool(has_upper && !has_lower)
+                            } else { Value::Error("isupper: not bytes/bytearray".to_string()) }
+                        }
+                        "lower" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let out = b.iter().map(|c| if b'A' <= *c && *c <= b'Z' { *c + 32 } else { *c }).collect();
+                                make_result(&obj, out)
+                            } else { Value::Error("lower: not bytes/bytearray".to_string()) }
+                        }
+                        "splitlines" => {
+                            let keepends = rest.get(0).map(|v| self.eval_inner(v)).map(|v| matches!(v, Value::Bool(true) | Value::Int(1))).unwrap_or(false);
+                            if let Some(b) = as_bytes(&obj) {
+                                let mut lines = Vec::new();
+                                let mut start = 0;
+                                let mut i = 0;
+                                while i < b.len() {
+                                    let c = b[i];
+                                    let line_end = match c {
+                                        b'\n' => Some(i+1),
+                                        b'\r' => {
+                                            if i+1 < b.len() && b[i+1] == b'\n' { Some(i+2) } else { Some(i+1) }
+                                        },
+                                        _ => None,
+                                    };
+                                    if let Some(end) = line_end {
+                                        let mut line = b[start..end].to_vec();
+                                        if !keepends {
+                                            if line.ends_with(&[b'\n']) { line.pop(); }
+                                            if line.ends_with(&[b'\r']) { line.pop(); }
+                                        }
+                                        lines.push(make_result(&obj, line));
+                                        start = end;
+                                        i = end;
+                                    } else {
+                                        i += 1;
+                                    }
+                                }
+                                if start < b.len() {
+                                    lines.push(make_result(&obj, b[start..].to_vec()));
+                                }
+                                Value::List(lines)
+                            } else { Value::Error("splitlines: not bytes/bytearray".to_string()) }
+                        }
+                        "swapcase" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let out = b.iter().map(|c| {
+                                    if b'a' <= *c && *c <= b'z' { *c - 32 }
+                                    else if b'A' <= *c && *c <= b'Z' { *c + 32 }
+                                    else { *c }
+                                }).collect();
+                                make_result(&obj, out)
+                            } else { Value::Error("swapcase: not bytes/bytearray".to_string()) }
+                        }
+                        "title" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let mut out = Vec::with_capacity(b.len());
+                                let mut prev_cased = false;
+                                for &c in b.iter() {
+                                    let is_alpha = (b'a' <= c && c <= b'z') || (b'A' <= c && c <= b'Z');
+                                    if is_alpha {
+                                        if !prev_cased {
+                                            if b'a' <= c && c <= b'z' { out.push(c - 32); } else { out.push(c); }
+                                            prev_cased = true;
+                                        } else {
+                                            if b'A' <= c && c <= b'Z' { out.push(c + 32); } else { out.push(c); }
+                                        }
+                                    } else {
+                                        out.push(c);
+                                        prev_cased = false;
+                                    }
+                                }
+                                make_result(&obj, out)
+                            } else { Value::Error("title: not bytes/bytearray".to_string()) }
+                        }
+                        "upper" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                let out = b.iter().map(|c| if b'a' <= *c && *c <= b'z' { *c - 32 } else { *c }).collect();
+                                make_result(&obj, out)
+                            } else { Value::Error("upper: not bytes/bytearray".to_string()) }
+                        }
+                        "zfill" => {
+                            if let Some(b) = as_bytes(&obj) {
+                                if let Some(Value::Int(width)) = rest.get(0) {
+                                    let width = *width as usize;
+                                    let mut out = Vec::new();
+                                    let mut sign = 0;
+                                    if !b.is_empty() && (b[0] == b'+' as u8 || b[0] == b'-' as u8) {
+                                        out.push(b[0]);
+                                        sign = 1;
+                                    }
+                                    let pad = width.saturating_sub(b.len());
+                                    for _ in 0..pad { out.push(b'0'); }
+                                    out.extend_from_slice(&b[sign..]);
+                                    make_result(&obj, out)
                                 } else {
-                                    Value::String("decimal".to_string())
+                                    Value::Error("zfill expects width argument".to_string())
                                 }
-                            },
-                            Value::Str(_) => Value::String("string".to_string()),
-                            Value::List(_) => Value::String("array".to_string()),
-                            Value::Dict(_) => Value::String("map".to_string()),
-                            Value::Error(_) => Value::String("error".to_string()),
-                            Value::Bool(_) => Value::String("bool".to_string()),
-                            Value::Null => Value::String("null".to_string()),
+                            } else { Value::Error("zfill: not bytes/bytearray".to_string()) }
                         }
-                    } else {
-                        Value::Error("type expects 1 argument".to_string())
+                        _ => Value::Error("Unknown bytes/bytearray method".to_string()),
                     }
-                } else if name == "round" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Int(n),
-                            Value::Float(n) => Value::Int(n.round() as i64),
-                            _ => Value::Error("round expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("round expects 1 argument".to_string())
-                    }
-                } else if name == "floor" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Int(n),
-                            Value::Float(n) => Value::Int(n.floor() as i64),
-                            _ => Value::Error("floor expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("floor expects 1 argument".to_string())
-                    }
-                } else if name == "ceil" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Int(n),
-                            Value::Float(n) => Value::Int(n.ceil() as i64),
-                            _ => Value::Error("ceil expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("ceil expects 1 argument".to_string())
-                    }
-                } else if name == "int" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Int(n),
-                            Value::Float(n) => Value::Int(n.trunc() as i64),
-                            Value::Str(s) => s.parse::<i64>().map(Value::Int).unwrap_or(Value::Error("invalid string for int".to_string())),
-                            _ => Value::Error("int expects a number or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("int expects 1 argument".to_string())
-                    }
-                } else if name == "float" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Float(n as f64),
-                            Value::Float(n) => Value::Float(n),
-                            Value::Str(s) => s.parse::<f64>().map(Value::Float).unwrap_or(Value::Error("invalid string for float".to_string())),
-                            _ => Value::Error("float expects a number or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("float expects 1 argument".to_string())
-                    }
-                } else if name == "str" {
-                    if args.len() == 1 {
-                        let v = self.eval_inner(&args[0]);
-                        Value::String(v.to_display_string())
-                    } else {
-                        Value::Error("str expects 1 argument".to_string())
-                    }
-                } else if name == "to_string" {
-                    if args.len() == 1 {
-                        let v = self.eval_inner(&args[0]);
-                        Value::String(v.to_display_string())
-                    } else {
-                        Value::Error("to_string expects 1 argument".to_string())
-                    }
-                } else if name == "help" {
-                    println!("Built-in functions: print, input, sqrt, sin, cos, abs, pow, len, type, type_of, to_string, str, int, float, round, floor, ceil, min, max, sum, range, map, filter, find, reduce, zip, map_keys, map_values, array_contains, array_index_of, help");
-                    println!("Usage: print(x), type(x), int(x), float(x), str(x), round(x), floor(x), ceil(x), etc.");
-                    Value::Null
-                } else if name == "min" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Int(a), Value::Int(b)) => Value::Int(a.min(b)),
-                            (Value::Float(a), Value::Float(b)) => Value::Float(a.min(b)),
-                            _ => Value::Error("min expects two numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("min expects 2 arguments".to_string())
-                    }
-                } else if name == "max" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Int(a), Value::Int(b)) => Value::Int(a.max(b)),
-                            (Value::Float(a), Value::Float(b)) => Value::Float(a.max(b)),
-                            _ => Value::Error("max expects two numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("max expects 2 arguments".to_string())
-                    }
-                } else if name == "sum" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::Int(arr.iter().filter_map(|v| if let Value::Int(n) = v { Some(*n) } else { None }).sum()),
-                            _ => Value::Error("sum expects an array of numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("sum expects 1 argument".to_string())
-                    }
-                } else if name == "range" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Int(start), Value::Int(end)) => {
-                                let arr = (start..end).map(|n| Value::Int(n)).collect();
-                                Value::List(arr)
-                            }
-                            _ => Value::Error("range expects two numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("range expects 2 arguments".to_string())
-                    }
-                } else if name == "map" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), &args[1]) {
-                            (Value::List(arr), Expr::FnDef { name, params, body }) => {
-                                let mut result = Vec::new();
-                                for v in arr {
-                                    let mut local_env = self.env.clone();
-                                    if let Some(param) = params.get(0) {
-                                        local_env.insert(param.clone(), v);
-                                    }
-                                    let mut sub_interpreter = Interpreter {
-                                        env: local_env,
-                                        functions: self.functions.clone(),
-                                    };
-                                    result.push(sub_interpreter.eval_inner(body));
-                                }
-                                Value::List(result)
-                            }
-                            _ => Value::Error("map expects an array and a function".to_string()),
-                        }
-                    } else {
-                        Value::Error("map expects 2 arguments".to_string())
-                    }
-                } else if name == "filter" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), &args[1]) {
-                            (Value::List(arr), Expr::FnDef { name, params, body }) => {
-                                let mut result = Vec::new();
-                                for v in arr {
-                                    let mut local_env = self.env.clone();
-                                    if let Some(param) = params.get(0) {
-                                        local_env.insert(param.clone(), v.clone());
-                                    }
-                                    let mut sub_interpreter = Interpreter {
-                                        env: local_env,
-                                        functions: self.functions.clone(),
-                                    };
-                                    let cond = sub_interpreter.eval_inner(body);
-                                    if let Value::Int(n) = cond {
-                                        if n != 0 {
-                                            result.push(v);
-                                        }
-                                    }
-                                }
-                                Value::List(result)
-                            }
-                            _ => Value::Error("filter expects an array and a function".to_string()),
-                        }
-                    } else {
-                        Value::Error("filter expects 2 arguments".to_string())
-                    }
-                } else if name == "find" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), &args[1]) {
-                            (Value::List(arr), Expr::FnDef { name, params, body }) => {
-                                for v in arr {
-                                    let mut local_env = self.env.clone();
-                                    if let Some(param) = params.get(0) {
-                                        local_env.insert(param.clone(), v.clone());
-                                    }
-                                    let mut sub_interpreter = Interpreter {
-                                        env: local_env,
-                                        functions: self.functions.clone(),
-                                    };
-                                    let cond = sub_interpreter.eval_inner(body);
-                                    if let Value::Int(n) = cond {
-                                        if n != 0 {
-                                            return v;
-                                        }
-                                    }
-                                }
-                                Value::Null
-                            }
-                            _ => Value::Error("find expects an array and a function".to_string()),
-                        }
-                    } else {
-                        Value::Error("find expects 2 arguments".to_string())
-                    }
-                } else if name == "reduce" {
-                    if args.len() == 3 {
-                        match (self.eval_inner(&args[0]), &args[1], self.eval_inner(&args[2])) {
-                            (Value::List(arr), Expr::FnDef { name, params, body }, init) => {
-                                let mut acc = init;
-                                for v in arr {
-                                    let mut local_env = self.env.clone();
-                                    if let Some(p0) = params.get(0) {
-                                        local_env.insert(p0.clone(), acc.clone());
-                                    }
-                                    if let Some(p1) = params.get(1) {
-                                        local_env.insert(p1.clone(), v.clone());
-                                    }
-                                    let mut sub_interpreter = Interpreter {
-                                        env: local_env,
-                                        functions: self.functions.clone(),
-                                    };
-                                    acc = sub_interpreter.eval_inner(body);
-                                }
-                                acc
-                            }
-                            _ => Value::Error("reduce expects array, function, and initial value".to_string()),
-                        }
-                    } else {
-                        Value::Error("reduce expects 3 arguments".to_string())
-                    }
-                } else if name == "zip" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::List(a), Value::List(b)) => {
-                                let arr = a.into_iter().zip(b.into_iter()).map(|(x, y)| Value::List(vec![x, y])).collect();
-                                Value::List(arr)
-                            }
-                            _ => Value::Error("zip expects two arrays".to_string()),
-                        }
-                    } else {
-                        Value::Error("zip expects 2 arguments".to_string())
-                    }
-                } else if name == "map_keys" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Dict(map) => Value::List(map.keys().cloned().collect()),
-                            _ => Value::Error("map_keys expects a map".to_string()),
-                        }
-                    } else {
-                        Value::Error("map_keys expects 1 argument".to_string())
-                    }
-                } else if name == "map_values" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Dict(map) => Value::List(map.values().cloned().collect()),
-                            _ => Value::Error("map_values expects a map".to_string()),
-                        }
-                    } else {
-                        Value::Error("map_values expects 1 argument".to_string())
-                    }
-                } else if name == "array_contains" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::List(arr), v) => Value::Int(arr.contains(&v) as i32),
-                            _ => Value::Error("array_contains expects array and value".to_string()),
-                        }
-                    } else {
-                        Value::Error("array_contains expects 2 arguments".to_string())
-                    }
-                } else if name == "array_index_of" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::List(arr), v) => Value::Int(arr.iter().position(|x| x == &v).map(|i| i as i32).unwrap_or(-1)),
-                            _ => Value::Error("array_index_of expects array and value".to_string()),
-                        }
-                    } else {
-                        Value::Error("array_index_of expects 2 arguments".to_string())
-                    }
-                } else if name == "all" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::Bool(arr.iter().all(|v| match v { Value::Bool(b) => *b, Value::Int(n) => *n != 0, _ => true })),
-                            _ => Value::Error("all expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("all expects 1 argument".to_string())
-                    }
-                } else if name == "any" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::Bool(arr.iter().any(|v| match v { Value::Bool(b) => *b, Value::Int(n) => *n != 0, _ => false })),
-                            _ => Value::Error("any expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("any expects 1 argument".to_string())
-                    }
-                } else if name == "ascii" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Str(s) => Value::Str(s.chars().map(|c| if c.is_ascii() { c } else { '?' }).collect()),
-                            _ => Value::Error("ascii expects a string".to_string()),
-                        }
-                    } else {
-                        Value::Error("ascii expects 1 argument".to_string())
-                    }
-                } else if name == "bin" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Str(format!("0b{:b}", n)),
-                            _ => Value::Error("bin expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("bin expects 1 argument".to_string())
-                    }
-                } else if name == "bool" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Bool(b) => Value::Bool(b),
-                            Value::Int(n) => Value::Bool(n != 0),
-                            Value::Null => Value::Bool(false),
-                            Value::Str(s) => Value::Bool(!s.is_empty()),
-                            Value::List(arr) => Value::Bool(!arr.is_empty()),
-                            Value::Dict(map) => Value::Bool(!map.is_empty()),
-                            _ => Value::Bool(false),
-                        }
-                    } else {
-                        Value::Error("bool expects 1 argument".to_string())
-                    }
-                } else if name == "bytes" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Str(s) => Value::Bytes(s.bytes().collect()),
-                            Value::List(arr) => Value::Bytes(arr.iter().filter_map(|v| if let Value::Int(n) = v { Some(*n as u8) } else { None }).collect()),
-                            _ => Value::Error("bytes expects a string or array of numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("bytes expects 1 argument".to_string())
-                    }
-                } else if name == "callable" {
-                    if args.len() == 1 {
-                        match &args[0] {
-                            Expr::Ident(id) => Value::Bool(self.functions.contains_key(id)),
-                            _ => Value::Bool(false),
-                        }
-                    } else {
-                        Value::Error("callable expects 1 argument".to_string())
-                    }
-                } else if name == "chr" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => std::char::from_u32(n as u32).map(|c| Value::Str(c.to_string())).unwrap_or(Value::Error("invalid code point".to_string())),
-                            _ => Value::Error("chr expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("chr expects 1 argument".to_string())
-                    }
-                } else if name == "complex" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Int(a), Value::Int(b)) => Value::String(format!("{}+{}j", a, b)),
-                            (Value::Float(a), Value::Float(b)) => Value::String(format!("{}+{}j", a, b)),
-                            _ => Value::Error("complex expects two numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("complex expects 2 arguments".to_string())
-                    }
-                } else if name == "dict" {
-                    if args.is_empty() {
-                        Value::Dict(std::collections::HashMap::new())
-                    } else if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => {
-                                let mut map = std::collections::HashMap::new();
-                                for v in arr {
-                                    if let Value::List(pair) = v {
-                                        if pair.len() == 2 {
-                                            if let Value::Str(k) = &pair[0] {
-                                                map.insert(k.clone(), pair[1].clone());
-                                            }
-                                        }
-                                    }
-                                }
-                                Value::Dict(map)
-                            }
-                            _ => Value::Error("dict expects an array of [key, value] pairs".to_string()),
-                        }
-                    } else {
-                        Value::Error("dict expects 0 or 1 argument".to_string())
-                    }
-                } else if name == "dir" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Dict(map) => Value::List(map.keys().cloned().collect()),
-                            Value::List(_) => Value::List(vec![Value::Str("length".to_string())]),
-                            Value::Str(_) => Value::List(vec![Value::Str("length".to_string())]),
-                            _ => Value::Error("dir expects a map, array, or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("dir expects 1 argument".to_string())
-                    }
-                } else if name == "divmod" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Int(a), Value::Int(b)) if b != 0 => Value::List(vec![Value::Int((a / b)), Value::Int(a % b)]),
-                            (Value::Float(a), Value::Float(b)) if b != 0.0 => Value::List(vec![Value::Float((a / b).trunc()), Value::Float(a % b)]),
-                            _ => Value::Error("divmod expects two numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("divmod expects 2 arguments".to_string())
-                    }
-                } else if name == "enumerate" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::List(arr.into_iter().enumerate().map(|(i, v)| Value::List(vec![Value::Int(i as i64), v])).collect()),
-                            _ => Value::Error("enumerate expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("enumerate expects 1 argument".to_string())
-                    }
-                } else if name == "float" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Float(n as f64),
-                            Value::Float(n) => Value::Float(n),
-                            Value::Str(s) => s.parse::<f64>().map(Value::Float).unwrap_or(Value::Error("invalid string for float".to_string())),
-                            _ => Value::Error("float expects a number or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("float expects 1 argument".to_string())
-                    }
-                } else if name == "format" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Str(fmt), Value::List(vals)) => {
-                                let mut out = fmt;
-                                for (i, v) in vals.iter().enumerate() {
-                                    out = out.replace(&format!("{{{}}}", i), &v.to_display_string());
-                                }
-                                Value::Str(out)
-                            }
-                            _ => Value::Error("format expects a string and an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("format expects 2 arguments".to_string())
-                    }
-                } else if name == "frozenset" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => {
-                                use std::collections::HashSet;
-                                let set: HashSet<_> = arr.into_iter().collect();
-                                Value::List(set.into_iter().collect())
-                            }
-                            _ => Value::Error("frozenset expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("frozenset expects 1 argument".to_string())
-                    }
-                } else if name == "getattr" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Dict(map), Value::Str(attr)) => map.get(&attr).cloned().unwrap_or(Value::Null),
-                            _ => Value::Error("getattr expects a map and a string".to_string()),
-                        }
-                    } else {
-                        Value::Error("getattr expects 2 arguments".to_string())
-                    }
-                } else if name == "hasattr" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Dict(map), Value::Str(attr)) => Value::Bool(map.contains_key(&attr)),
-                            _ => Value::Error("hasattr expects a map and a string".to_string()),
-                        }
-                    } else {
-                        Value::Error("hasattr expects 2 arguments".to_string())
-                    }
-                } else if name == "hash" {
-                    if args.len() == 1 {
-                        use std::collections::hash_map::DefaultHasher;
-                        use std::hash::{Hash, Hasher};
-                        let v = self.eval_inner(&args[0]);
-                        let mut hasher = DefaultHasher::new();
-                        match &v {
-                            Value::Int(n) => n.hash(&mut hasher),
-                            Value::Float(n) => n.to_bits().hash(&mut hasher),
-                            Value::Str(s) => s.hash(&mut hasher),
-                            Value::Bool(b) => b.hash(&mut hasher),
-                            _ => (),
-                        }
-                        Value::Int(hasher.finish() as i64)
-                    } else {
-                        Value::Error("hash expects 1 argument".to_string())
-                    }
-                } else if name == "hex" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Str(format!("0x{:x}", n)),
-                            _ => Value::Error("hex expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("hex expects 1 argument".to_string())
-                    }
-                } else if name == "id" {
-                    if args.len() == 1 {
-                        let addr = &args[0] as *const _ as usize;
-                        Value::Int(addr as i64)
-                    } else {
-                        Value::Error("id expects 1 argument".to_string())
-                    }
-                } else if name == "input" {
-                    use std::io::{self, Write};
-                    if args.is_empty() {
-                        let mut s = String::new();
-                        io::stdout().flush().ok();
-                        io::stdin().read_line(&mut s).ok();
-                        Value::String(s.trim_end().to_string())
-                    } else if args.len() == 1 {
-                        let prompt = self.eval_inner(&args[0]).to_display_string();
-                        print!("{}", prompt);
-                        io::stdout().flush().ok();
-                        let mut s = String::new();
-                        io::stdin().read_line(&mut s).ok();
-                        Value::String(s.trim_end().to_string())
-                    } else {
-                        Value::Error("input expects 0 or 1 argument".to_string())
-                    }
-                } else if name == "int" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Int(n),
-                            Value::Float(n) => Value::Int(n.trunc() as i64),
-                            Value::Str(s) => s.parse::<i64>().map(Value::Int).unwrap_or(Value::Error("invalid string for int".to_string())),
-                            _ => Value::Error("int expects a number or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("int expects 1 argument".to_string())
-                    }
-                } else if name == "isinstance" {
-                    if args.len() == 2 {
-                        let v = self.eval_inner(&args[0]);
-                        let t = self.eval_inner(&args[1]);
-                        let vtype = match v {
-                            Value::Int(n) => if n == 0 { "integer" } else { "decimal" },
-                            Value::Str(_) => "string",
-                            Value::List(_) => "array",
-                            Value::Dict(_) => "map",
-                            Value::Bool(_) => "bool",
-                            Value::Null => "null",
-                            _ => "unknown",
-                        };
-                        match t {
-                            Value::Str(s) => Value::Bool(vtype == s),
-                            _ => Value::Error("isinstance expects a value and a type string".to_string()),
-                        }
-                    } else {
-                        Value::Error("isinstance expects 2 arguments".to_string())
-                    }
-                } else if name == "issubclass" {
-                    // Not implemented: no class hierarchy
-                    Value::Error("issubclass not supported".to_string())
-                } else if name == "iter" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::List(arr),
-                            Value::Str(s) => Value::List(s.chars().map(|c| Value::Str(c.to_string())).collect()),
-                            _ => Value::Error("iter expects an array or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("iter expects 1 argument".to_string())
-                    }
-                } else if name == "list" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::List(arr),
-                            Value::Str(s) => Value::List(s.chars().map(|c| Value::Str(c.to_string())).collect()),
-                            _ => Value::Error("list expects an array or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("list expects 1 argument".to_string())
-                    }
-                } else if name == "locals" {
-                    // Not implemented: would require stack frame tracking
-                    Value::Error("locals not supported".to_string())
-                } else if name == "object" {
-                    Value::Dict(std::collections::HashMap::new())
-                } else if name == "oct" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Int(n) => Value::Str(format!("0o{:o}", n)),
-                            _ => Value::Error("oct expects a number".to_string()),
-                        }
-                    } else {
-                        Value::Error("oct expects 1 argument".to_string())
-                    }
-                } else if name == "ord" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::Str(s) => s.chars().next().map(|c| Value::Int(c as u32 as i64)).unwrap_or(Value::Error("ord expects a non-empty string".to_string())),
-                            _ => Value::Error("ord expects a string".to_string()),
-                        }
-                    } else {
-                        Value::Error("ord expects 1 argument".to_string())
-                    }
-                } else if name == "repr" {
-                    if args.len() == 1 {
-                        let v = self.eval_inner(&args[0]);
-                        Value::String(format!("{:?}", v))
-                    } else {
-                        Value::Error("repr expects 1 argument".to_string())
-                    }
-                } else if name == "reversed" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(mut arr) => { arr.reverse(); Value::List(arr) },
-                            Value::Str(s) => Value::Str(s.chars().rev().collect()),
-                            _ => Value::Error("reversed expects an array or string".to_string()),
-                        }
-                    } else {
-                        Value::Error("reversed expects 1 argument".to_string())
-                    }
-                } else if name == "set" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => {
-                                use std::collections::HashSet;
-                                let set: HashSet<_> = arr.into_iter().collect();
-                                Value::List(set.into_iter().collect())
-                            }
-                            _ => Value::Error("set expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("set expects 1 argument".to_string())
-                    }
-                } else if name == "slice" {
-                    if args.len() == 3 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1]), self.eval_inner(&args[2])) {
-                            (Value::List(arr), Value::Int(start), Value::Int(stop)) => {
-                                let s = start as usize;
-                                let e = stop as usize;
-                                Value::List(arr[s..e.min(arr.len())].to_vec())
-                            }
-                            (Value::Str(s), Value::Int(start), Value::Int(stop)) => {
-                                let sidx = start as usize;
-                                let eidx = stop as usize;
-                                Value::Str(s.chars().skip(sidx).take(eidx - sidx).collect())
-                            }
-                            _ => Value::Error("slice expects array/string, start, stop".to_string()),
-                        }
-                    } else {
-                        Value::Error("slice expects 3 arguments".to_string())
-                    }
-                } else if name == "sorted" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(mut arr) => { arr.sort_by(|a, b| a.to_display_string().cmp(&b.to_display_string())); Value::List(arr) },
-                            _ => Value::Error("sorted expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("sorted expects 1 argument".to_string())
-                    }
-                } else if name == "staticmethod" {
-                    Value::Error("staticmethod not supported".to_string())
-                } else if name == "str" {
-                    if args.len() == 1 {
-                        let v = self.eval_inner(&args[0]);
-                        Value::String(v.to_display_string())
-                    } else {
-                        Value::Error("str expects 1 argument".to_string())
-                    }
-                } else if name == "sum" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::Int(arr.iter().filter_map(|v| if let Value::Int(n) = v { Some(*n) } else { None }).sum()),
-                            _ => Value::Error("sum expects an array of numbers".to_string()),
-                        }
-                    } else {
-                        Value::Error("sum expects 1 argument".to_string())
-                    }
-                } else if name == "super" {
-                    Value::Error("super not supported".to_string())
-                } else if name == "tuple" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(arr) => Value::List(arr),
-                            _ => Value::Error("tuple expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("tuple expects 1 argument".to_string())
-                    }
-                } else if name == "vars" {
-                    let arr = self.env.iter().map(|(k, v)| Value::List(vec![Value::Str(k.clone()), v.clone()])).collect();
-                    Value::List(arr)
-                } else if name == "delattr" {
-                    if args.len() == 2 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
-                            (Value::Dict(mut map), Value::Str(attr)) => { map.remove(&attr); Value::Dict(map) },
-                            _ => Value::Error("delattr expects a map and a string".to_string()),
-                        }
-                    } else {
-                        Value::Error("delattr expects 2 arguments".to_string())
-                    }
-                } else if name == "setattr" {
-                    if args.len() == 3 {
-                        match (self.eval_inner(&args[0]), self.eval_inner(&args[1]), self.eval_inner(&args[2])) {
-                            (Value::Dict(mut map), Value::Str(attr), v) => { map.insert(attr, v); Value::Dict(map) },
-                            _ => Value::Error("setattr expects a map, string, and value".to_string()),
-                        }
-                    } else {
-                        Value::Error("setattr expects 3 arguments".to_string())
-                    }
-                } else if name == "next" {
-                    if args.len() == 1 {
-                        match self.eval_inner(&args[0]) {
-                            Value::List(mut arr) => if arr.is_empty() { Value::Null } else { arr.remove(0) },
-                            _ => Value::Error("next expects an array".to_string()),
-                        }
-                    } else {
-                        Value::Error("next expects 1 argument".to_string())
-                    }
-                } else if name == "breakpoint" {
-                    Value::Error("breakpoint not supported".to_string())
-                } else if name == "compile" {
-                    Value::Error("compile not supported".to_string())
-                } else if name == "eval" {
-                    Value::Error("eval not supported".to_string())
-                } else if name == "exec" {
-                    Value::Error("exec not supported".to_string())
-                } else if name == "open" {
-                    Value::Error("open not supported".to_string())
-                } else if name == "property" {
-                    Value::Error("property not supported".to_string())
-                } else if name == "classmethod" {
-                    Value::Error("classmethod not supported".to_string())
-                } else if name == "globals" {
-                    Value::Error("globals not supported".to_string())
-                } else if name == "memoryview" {
-                    Value::Error("memoryview not supported".to_string())
-                } else if name == "__import__" {
-                    Value::Error("__import__ not supported".to_string())
                 }
                 // ...existing code for user-defined functions...
             }
