@@ -177,11 +177,20 @@ impl Interpreter {
             }
             Expr::FnCall { name, args } => {
                 if name == "print" {
-                    for arg in args {
-                        let val = self.eval_inner(arg);
-                        println!("{}", val.to_display_string());
+                    if args.is_empty() {
+                        println!("");
+                    } else {
+                        for arg in args {
+                            let val = self.eval_inner(arg);
+                            println!("{}", val.to_display_string());
+                        }
                     }
                     Value::Null // Return Null instead of Number(0.0)
+                } else if name == "clear" || name == "cls" {
+                    // Clear the terminal screen (Windows and Unix)
+                    #[cfg(windows)] { std::process::Command::new("cmd").args(["/C", "cls"]).status().ok(); }
+                    #[cfg(not(windows))] { std::process::Command::new("clear").status().ok(); }
+                    Value::Null
                 } else if name == "sqrt" {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
@@ -245,7 +254,13 @@ impl Interpreter {
                 } else if name == "type_of" || name == "type" {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
-                            Value::Number(_) => Value::String("number".to_string()),
+                            Value::Number(n) => {
+                                if n.fract() == 0.0 {
+                                    Value::String("integer".to_string())
+                                } else {
+                                    Value::String("decimal".to_string())
+                                }
+                            },
                             Value::String(_) => Value::String("string".to_string()),
                             Value::Array(_) => Value::String("array".to_string()),
                             Value::Map(_) => Value::String("map".to_string()),
@@ -256,26 +271,71 @@ impl Interpreter {
                     } else {
                         Value::Error("type expects 1 argument".to_string())
                     }
-                } else if name == "to_string" {
+                } else if name == "round" {
                     if args.len() == 1 {
                         match self.eval_inner(&args[0]) {
-                            Value::Number(n) => Value::String(n.to_string()),
-                            Value::String(s) => Value::String(s),
-                            Value::Array(arr) => Value::String(format!("{:?}", arr)),
-                            Value::Map(map) => Value::String(format!("{:?}", map)),
-                            Value::Error(e) => Value::String(format!("Error: {}", e)),
-                            Value::Bool(_) | Value::Null => Value::Error("Invalid type".to_string()),
+                            Value::Number(n) => Value::Number(n.round()),
+                            _ => Value::Error("round expects a number".to_string()),
                         }
+                    } else {
+                        Value::Error("round expects 1 argument".to_string())
+                    }
+                } else if name == "floor" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Number(n) => Value::Number(n.floor()),
+                            _ => Value::Error("floor expects a number".to_string()),
+                        }
+                    } else {
+                        Value::Error("floor expects 1 argument".to_string())
+                    }
+                } else if name == "ceil" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Number(n) => Value::Number(n.ceil()),
+                            _ => Value::Error("ceil expects a number".to_string()),
+                        }
+                    } else {
+                        Value::Error("ceil expects 1 argument".to_string())
+                    }
+                } else if name == "int" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Number(n) => Value::Number(n.trunc()),
+                            Value::String(s) => s.parse::<f64>().map(|n| Value::Number(n.trunc())).unwrap_or(Value::Error("invalid string for int".to_string())),
+                            _ => Value::Error("int expects a number or string".to_string()),
+                        }
+                    } else {
+                        Value::Error("int expects 1 argument".to_string())
+                    }
+                } else if name == "float" {
+                    if args.len() == 1 {
+                        match self.eval_inner(&args[0]) {
+                            Value::Number(n) => Value::Number(n),
+                            Value::String(s) => s.parse::<f64>().map(Value::Number).unwrap_or(Value::Error("invalid string for float".to_string())),
+                            _ => Value::Error("float expects a number or string".to_string()),
+                        }
+                    } else {
+                        Value::Error("float expects 1 argument".to_string())
+                    }
+                } else if name == "str" {
+                    if args.len() == 1 {
+                        let v = self.eval_inner(&args[0]);
+                        Value::String(v.to_display_string())
+                    } else {
+                        Value::Error("str expects 1 argument".to_string())
+                    }
+                } else if name == "to_string" {
+                    if args.len() == 1 {
+                        let v = self.eval_inner(&args[0]);
+                        Value::String(v.to_display_string())
                     } else {
                         Value::Error("to_string expects 1 argument".to_string())
                     }
-                } else if name == "input" {
-                    use std::io::{self, Write};
-                    print!("Input: ");
-                    io::stdout().flush().unwrap();
-                    let mut buf = String::new();
-                    io::stdin().read_line(&mut buf).unwrap();
-                    Value::String(buf.trim_end().to_string())
+                } else if name == "help" {
+                    println!("Built-in functions: print, input, sqrt, sin, cos, abs, pow, len, type, type_of, to_string, str, int, float, round, floor, ceil, min, max, sum, range, map, filter, find, reduce, zip, map_keys, map_values, array_contains, array_index_of, help");
+                    println!("Usage: print(x), type(x), int(x), float(x), str(x), round(x), floor(x), ceil(x), etc.");
+                    Value::Null
                 } else if name == "min" {
                     if args.len() == 2 {
                         match (self.eval_inner(&args[0]), self.eval_inner(&args[1])) {
