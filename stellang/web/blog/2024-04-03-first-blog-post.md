@@ -1,7 +1,7 @@
 ---
 slug: first-blog-post
 title: First Blog Post
-authors: [kazooki, satvik, saturo]
+authors: [Mahesh]
 tags: [Stel, blog, language]
 ---
 

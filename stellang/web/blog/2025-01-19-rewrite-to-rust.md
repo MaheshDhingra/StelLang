@@ -1,13 +1,13 @@
 ---
 slug: rewrite-to-rust
 title: Stel's Rewrite to Rust
-authors: kazooki
+authors: Mahesh
 tags: [Stel, blog, rust, rewrite]
 ---
 
 # Stel's Rewrite to Rust
 
-Stel's rewrite to Rust is a significant milestone in the Stel's development. This rewrite aims to improve the language's performance, readability, and maintainability. Rewrite has been planned by Kazooki.
+Stel's rewrite to Rust is a significant milestone in the Stel's development. This rewrite aims to improve the language's performance, readability, and maintainability. Rewrite has been planned by Mahesh.
 
 ## Rewrite Process
 

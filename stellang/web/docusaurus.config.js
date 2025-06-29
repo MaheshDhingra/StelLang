@@ -50,11 +50,11 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          editUrl: "https://github.com/Kazooki123/Stel-docs/tree/main/docs",
+          editUrl: "https://github.com/MaheshDhingra/Stel-lang/tree/main/stellang/web/docs",
         },
         blog: {
           showReadingTime: true,
-          editUrl: "https://github.com/Kazooki123/Stel-docs/tree/main/docs",
+          editUrl: "https://github.com/MaheshDhingra/Stel-lang/tree/main/stellang/web/docs",
         },
         theme: {
           customCss: "./src/css/custom.css",

@@ -61,4 +61,4 @@ print(x(5))
 
 ### And many more! 😄
 
-You can visit the [Stel Repo](https://github.com/Kazooki123/Stel.git) to see more examples.
+You can visit the [Stel Repo](https://github.com/MaheshDhingra/Stel.git) to see more examples.
