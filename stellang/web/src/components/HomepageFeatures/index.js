@@ -5,28 +5,28 @@ import styles from './styles.module.css';
 const FeatureList = [
   {
     title: 'Simplicity',
-    Svg: require('@site/static/img/Stel.png').default,
+    Svg: require('@site/static/img/stel.png').default,
     description: (
       <>
-        Stel is designed with simplicity in mind. It's easy to learn and understand, making it perfect for beginners. Yet, it's powerful enough to handle complex tasks, making it a great choice for experienced developers as well.
+        stel is designed with simplicity in mind. It's easy to learn and understand, making it perfect for beginners. Yet, it's powerful enough to handle complex tasks, making it a great choice for experienced developers as well.
       </>
     ),
   },
   {
     title: 'Efficiency',
-    Svg: require('@site/static/img/Stel.png').default,
+    Svg: require('@site/static/img/stel.png').default,
     description: (
       <>
-        Stel is built for speed. It's optimized for performance, ensuring that your programs run as fast as possible. With Stel, you can focus on writing great code, knowing that it will be executed efficiently.
+        stel is built for speed. It's optimized for performance, ensuring that your programs run as fast as possible. With stel, you can focus on writing great code, knowing that it will be executed efficiently.
       </>
     ),
   },
   {
     title: 'Versatility',
-    Svg: require('@site/static/img/Stel.png').default,
+    Svg: require('@site/static/img/stel.png').default,
     description: (
       <>
-        <span> Stel </span> is a versatile language. It supports multiple programming paradigms, allowing you to choose the best approach for each task. Whether you prefer procedural, object-oriented, or functional programming, Stel has you covered.
+        <span> stel </span> is a versatile language. It supports multiple programming paradigms, allowing you to choose the best approach for each task. Whether you prefer procedural, object-oriented, or functional programming, stel has you covered.
       </>
     ),
   },

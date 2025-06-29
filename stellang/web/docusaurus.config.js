@@ -8,27 +8,27 @@ import { themes as prismThemes } from "prism-react-renderer";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: "Stel",
-  tagline: "Stel the Programming Language",
+  title: "stel",
+  tagline: "stel the Programming Language",
   favicon: "img/favicon.ico",
 
   // @ts-ignore
-  title: "Welcome to Stel!",
+  title: "Welcome to stel!",
   // @ts-ignore
   tagline: "The New Programming Language🦀",
   // @ts-ignore
-  favicon: "img/Stel.png",
+  favicon: "img/stel.png",
 
   // Set the production url of your site here
-  url: "https://Stel-docs.vercel.app/",
+  url: "https://stel-docs.vercel.app/",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "Stel-lang", // Usually your GitHub org/user name.
-  projectName: "Stel-docs", // Usually your repo name.
+  organizationName: "stel-lang", // Usually your GitHub org/user name.
+  projectName: "stel-docs", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
@@ -50,11 +50,11 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          editUrl: "https://github.com/MaheshDhingra/Stel-lang/tree/main/stellang/web/docs",
+          editUrl: "https://github.com/MaheshDhingra/stel-lang/tree/main/stellang/web/docs",
         },
         blog: {
           showReadingTime: true,
-          editUrl: "https://github.com/MaheshDhingra/Stel-lang/tree/main/stellang/web/docs",
+          editUrl: "https://github.com/MaheshDhingra/stel-lang/tree/main/stellang/web/docs",
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -67,14 +67,14 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       // Replace with your project's social card
-      image: "img/Stel-social-card.jpg",
+      image: "img/stel-social-card.jpg",
       navbar: {
-        title: "Stel",
+        title: "stel",
         logo: {
-          alt: "Stel Logo",
-          src: "img/Stel.png",
+          alt: "stel Logo",
+          src: "img/stel.png",
           // @ts-ignore
-          src: "img/Stel.png",
+          src: "img/stel.png",
         },
         items: [
           {
@@ -86,7 +86,7 @@ const config = {
           { to: "/blog", label: "Blog", position: "left" },
           { to: "/community", label: "Community", position: "left" },
           {
-            href: "https://github.com/Stel-lang/Stel",
+            href: "https://github.com/stel-lang/stel",
             label: "GitHub",
             position: "right",
           },
@@ -114,7 +114,7 @@ const config = {
             items: [
               {
                 label: "Stack Overflow",
-                href: "https://stackoverflow.com/questions/tagged/Stel",
+                href: "https://stackoverflow.com/questions/tagged/stel",
               },
               {
                 label: "Discord",
@@ -122,7 +122,7 @@ const config = {
               },
               {
                 label: "Twitter",
-                href: "https://twitter.com/Stelofficial1",
+                href: "https://twitter.com/stelofficial1",
               },
             ],
           },
@@ -135,12 +135,12 @@ const config = {
               },
               {
                 label: "GitHub",
-                href: "https://github.com/Stel-lang/Stel",
+                href: "https://github.com/stel-lang/stel",
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Stel. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} stel. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,
