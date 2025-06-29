@@ -5,7 +5,7 @@ import styles from './styles.module.css';
 const FeatureList = [
   {
     title: 'Simplicity',
-    Svg: require('@site/static/img/stel.png').default,
+    Svg: require('@site/static/img/stel.svg').default,
     description: (
       <>
         stel is designed with simplicity in mind. It's easy to learn and understand, making it perfect for beginners. Yet, it's powerful enough to handle complex tasks, making it a great choice for experienced developers as well.
@@ -14,7 +14,7 @@ const FeatureList = [
   },
   {
     title: 'Efficiency',
-    Svg: require('@site/static/img/stel.png').default,
+    Svg: require('@site/static/img/stel.svg').default,
     description: (
       <>
         stel is built for speed. It's optimized for performance, ensuring that your programs run as fast as possible. With stel, you can focus on writing great code, knowing that it will be executed efficiently.
@@ -23,7 +23,7 @@ const FeatureList = [
   },
   {
     title: 'Versatility',
-    Svg: require('@site/static/img/stel.png').default,
+    Svg: require('@site/static/img/stel.svg').default,
     description: (
       <>
         <span> stel </span> is a versatile language. It supports multiple programming paradigms, allowing you to choose the best approach for each task. Whether you prefer procedural, object-oriented, or functional programming, stel has you covered.
