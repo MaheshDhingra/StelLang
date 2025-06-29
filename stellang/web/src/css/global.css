@@ -1,0 +1,7 @@
+/* CSS to make Monaco Editor fit the content/layout of the page */
+.monaco-editor {
+    width: 100%; /* Full width */
+    height: 500px; /* Adjust the height as needed */
+    border: 1px solid #ddd; /* Optional: adds a border around the editor */
+    margin-bottom: 1rem; /* Space below the editor */
+}
