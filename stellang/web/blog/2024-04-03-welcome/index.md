@@ -1,10 +1,10 @@
 ---
 slug: blog
 title: blog
-authors: [kazooki, trnx]
-tags: [crabby, developers, coding]
+authors: Mahesh
+tags: [Stel-lang, developers, coding]
 ---
 
-# Crabby
+# Stel-lang
 
-Welcome to Crabby Blog!
+Welcome to Stel-lang Blog!

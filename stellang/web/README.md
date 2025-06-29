@@ -1,6 +1,6 @@
-# Crabby Documentation Website
+# Stel Documentation Website
 
-The repository for the Crabby documentation website.
+The repository for the Stel documentation website.
 
 ## Installation
 

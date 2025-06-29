@@ -4,12 +4,12 @@ sidebar_position: 1
 
 # Keywords
 
-Here you can find a list of all the keywords in Crabby!
+Here you can find a list of all the keywords in stel!
 
 `pub` - Shorten for `public`, is a keyword used for functions. For example:
 
 ```js
-// public.crab
+// public.stel
 
 pub def foo() {
     print("Hello!")
@@ -18,10 +18,10 @@ pub def foo() {
 
 Note: **If a function has no `pub`, then it is automatically a private function, and can't be imported.**
 
-`import` - Importing a `.crab/.cb` file or **Crabby** module. For example:
+`import` - Importing a `.stel/.cb` file or **stel** module. For example:
 
 ```js
-import foo from "./public.crab"
+import foo from "./public.stel"
 
 foo()
 ```
@@ -29,7 +29,7 @@ foo()
 `def` - Shorten for `define`, is a keyword used for functions. For example:
 
 ```js
-// public.crab
+// public.stel
 
 def foo() {
     print("Hello!")
@@ -39,7 +39,7 @@ def foo() {
 `let` - Let is a keyword used for variables. For example:
 
 ```js
-// public.crab
+// public.stel
 
 let x = 10
 ```

@@ -19,10 +19,10 @@ cargo --version
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Step 2: Git clone the Crabby repository
+Step 2: Git clone the Stel repository
 
 ```bash
-git clone https://github.com/crabby-lang/crabby.git
+git clone https://github.com/Stel-lang/Stel.git
 ```
 
 Step 3: Build it
@@ -34,7 +34,7 @@ cargo build
 Step 4: Test and Run it
 
 ```bash
-cargo run ./examples/example.crab
+cargo run ./examples/example.stel
 ```
 
 ## System Requirements
@@ -46,5 +46,5 @@ cargo run ./examples/example.crab
 ## Additional Notes
 
 * An internet connection is required for initial download and potential updates
-* Crabby works only in the Rust nightly version
+* Stel works only in the Rust nightly version
 * This page might changed for the upcoming updates

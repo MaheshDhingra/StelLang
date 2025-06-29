@@ -8,27 +8,27 @@ import { themes as prismThemes } from "prism-react-renderer";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: "Crabby",
-  tagline: "Crabby the Programming Language",
+  title: "Stel",
+  tagline: "Stel the Programming Language",
   favicon: "img/favicon.ico",
 
   // @ts-ignore
-  title: "Welcome to Crabby!",
+  title: "Welcome to Stel!",
   // @ts-ignore
   tagline: "The New Programming Language🦀",
   // @ts-ignore
-  favicon: "img/crabby.png",
+  favicon: "img/Stel.png",
 
   // Set the production url of your site here
-  url: "https://crabby-docs.vercel.app/",
+  url: "https://Stel-docs.vercel.app/",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "crabby-lang", // Usually your GitHub org/user name.
-  projectName: "crabby-docs", // Usually your repo name.
+  organizationName: "Stel-lang", // Usually your GitHub org/user name.
+  projectName: "Stel-docs", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
@@ -50,11 +50,11 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          editUrl: "https://github.com/Kazooki123/crabby-docs/tree/main/docs",
+          editUrl: "https://github.com/Kazooki123/Stel-docs/tree/main/docs",
         },
         blog: {
           showReadingTime: true,
-          editUrl: "https://github.com/Kazooki123/crabby-docs/tree/main/docs",
+          editUrl: "https://github.com/Kazooki123/Stel-docs/tree/main/docs",
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -67,14 +67,14 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       // Replace with your project's social card
-      image: "img/crabby-social-card.jpg",
+      image: "img/Stel-social-card.jpg",
       navbar: {
-        title: "Crabby",
+        title: "Stel",
         logo: {
-          alt: "Crabby Logo",
-          src: "img/crabby.png",
+          alt: "Stel Logo",
+          src: "img/Stel.png",
           // @ts-ignore
-          src: "img/crabby.png",
+          src: "img/Stel.png",
         },
         items: [
           {
@@ -86,7 +86,7 @@ const config = {
           { to: "/blog", label: "Blog", position: "left" },
           { to: "/community", label: "Community", position: "left" },
           {
-            href: "https://github.com/crabby-lang/crabby",
+            href: "https://github.com/Stel-lang/Stel",
             label: "GitHub",
             position: "right",
           },
@@ -114,7 +114,7 @@ const config = {
             items: [
               {
                 label: "Stack Overflow",
-                href: "https://stackoverflow.com/questions/tagged/crabby",
+                href: "https://stackoverflow.com/questions/tagged/Stel",
               },
               {
                 label: "Discord",
@@ -122,7 +122,7 @@ const config = {
               },
               {
                 label: "Twitter",
-                href: "https://twitter.com/crabbyofficial1",
+                href: "https://twitter.com/Stelofficial1",
               },
             ],
           },
@@ -135,12 +135,12 @@ const config = {
               },
               {
                 label: "GitHub",
-                href: "https://github.com/crabby-lang/crabby",
+                href: "https://github.com/Stel-lang/Stel",
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Crabby. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Stel. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,

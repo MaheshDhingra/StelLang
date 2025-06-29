@@ -4,16 +4,16 @@ sidebar_position: 1
 
 # Introduction
 
-**Welcome to the world of Crabby!** A programming language made entirely in **[Rust](https://www.rust-lang.org/learn)**, designed to meet the demands of the modern programming era. Crabby is not just another language; it's a paradigm shift that aims to redefine the way we approach programming.
+**Welcome to the world of Stel!** A programming language made entirely in **[Rust](https://www.rust-lang.org/learn)**, designed to meet the demands of the modern programming era. Stel is not just another language; it's a paradigm shift that aims to redefine the way we approach programming.
 
-Crabby has a **Pythonic** yet **Functional**-like syntax. Which means if you know mostly about coding in Python,
+Stel has a **Pythonic** yet **Functional**-like syntax. Which means if you know mostly about coding in Python,
 you'd probably appreciate this language.
 
-Crabby file formats are either `.crab` or `.cb`, but `.crab` is widely recommended for now.
+Stel file formats are either `.stel` or `.stel`, but `.stel` is widely recommended for now.
 
 ## Features
 
-- Crabby designed for simplicity.
+- Stel designed for simplicity.
 - Easy to learn and understand.
 - Ideal for beginners.
 - Powerful for handling complex tasks.
@@ -27,7 +27,7 @@ This is an example of a **hello world** program
 print("hello world!")
 ```
 
-### math.crab
+### math.stel
 
 ```js
 let x = 10
@@ -36,7 +36,7 @@ let y = 10
 print(x + y)
 ```
 
-### if-else.crab
+### if-else.stel
 
 ```js
 let x = true
@@ -49,7 +49,7 @@ if x: {
 }
 ```
 
-### lambda.crab
+### lambda.stel
 
 ```js
 let x = lambda(a): {
@@ -61,4 +61,4 @@ print(x(5))
 
 ### And many more! 😄
 
-You can visit the [Crabby Repo](https://github.com/Kazooki123/crabby.git) to see more examples.
+You can visit the [Stel Repo](https://github.com/Kazooki123/Stel.git) to see more examples.

@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <Layout
       title={`${siteConfig.title}`}
-      description="Crabby Docs & Guides!">
+      description="Stel Docs & Guides!">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

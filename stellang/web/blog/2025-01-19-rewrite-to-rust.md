@@ -1,13 +1,13 @@
 ---
 slug: rewrite-to-rust
-title: Crabby's Rewrite to Rust
+title: Stel's Rewrite to Rust
 authors: kazooki
-tags: [crabby, blog, rust, rewrite]
+tags: [Stel, blog, rust, rewrite]
 ---
 
-# Crabby's Rewrite to Rust
+# Stel's Rewrite to Rust
 
-Crabby's rewrite to Rust is a significant milestone in the Crabby's development. This rewrite aims to improve the language's performance, readability, and maintainability. Rewrite has been planned by Kazooki.
+Stel's rewrite to Rust is a significant milestone in the Stel's development. This rewrite aims to improve the language's performance, readability, and maintainability. Rewrite has been planned by Kazooki.
 
 ## Rewrite Process
 
@@ -19,8 +19,8 @@ The rewrite process involved several stages, including:
 
 ## Features from rewrite
 
-* Crabby is Memory safe
-* Crabby's Type checking
+* Stel is Memory safe
+* Stel's Type checking
 * Better error handling
 * Ownership methods and features
 * And many more to come

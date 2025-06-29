@@ -1,41 +1,41 @@
 ---
-slug: introducing-crab
-title: Introducing Crab the Package Manager.
-authors: kazooki
-tags: [crabby, blog, rust, package, library]
+slug: introducing-Stel
+title: Introducing Stel the Package Manager.
+authors: Mahesh
+tags: [Stel, blog, rust, package, library]
 ---
 
-# Introducing Crab: Package Manager for Crabby
+# Introducing Stel: Package Manager for Stel
 
-Crab is Package manager and a Project builder for Crabby, specifically for making libraries or applications
-powered by `Crabby`. Most of its commands are similar to `cargo` but differently.
+Stel is Package manager and a Project builder for Stel, specifically for making libraries or applications
+powered by `Stel`. Most of its commands are similar to `cargo` but differently.
 
-## Why Crab?
+## Why Stel?
 
-Crab is a package manager for Crabby, specifically for making libraries or applications powered by Crabby.
-Crab is designed to be a lightweight alternative to `cargo` and is optimized for speed and efficiency.
+Stel is a package manager for Stel, specifically for making libraries or applications powered by Stel.
+Stel is designed to be a lightweight alternative to `cargo` and is optimized for speed and efficiency.
 
-## Crab's Features
+## Stel's Features
 
-Crab has the following features:
+Stel has the following features:
 
-* Package management: Crab allows you to easily manage your Crabby projects and dependencies.
-* Project builder: Crab provides a simple and efficient way to build Crabby projects.
-* Dependency resolution: Crab automatically resolves dependencies and ensures compatibility between packages.
-* Fast and efficient: Crab is designed to be fast and efficient, making it suitable for real-time applications.
-* Easy to use: Crab has a simple and intuitive command-line interface, making it easy to use for developers.
+* Package management: Stel allows you to easily manage your Stel projects and dependencies.
+* Project builder: Stel provides a simple and efficient way to build Stel projects.
+* Dependency resolution: Stel automatically resolves dependencies and ensures compatibility between packages.
+* Fast and efficient: Stel is designed to be fast and efficient, making it suitable for real-time applications.
+* Easy to use: Stel has a simple and intuitive command-line interface, making it easy to use for developers.
 
-## Crab's Commands
+## Stel's Commands
 
-Crab has the following commands:
+Stel has the following commands:
 
-* `crab init`: Initialize a new Crabby project.
-* `crab build`: Build a Crabby project.
-* `crab run`: Run a Crabby project.
-* `crab test`: Test a Crabby project.
-* `crab doc`: Generate documentation for a Crabby project.
-* `crab publish`: Publish a Crabby project to crabby.io.
-* `crab install`: Install a Crabby project from crabby.io.
-* `crab add`: Adds a package or library to the lock file.
+* `Stel init`: Initialize a new Stel project.
+* `Stel build`: Build a Stel project.
+* `Stel run`: Run a Stel project.
+* `Stel test`: Test a Stel project.
+* `Stel doc`: Generate documentation for a Stel project.
+* `Stel publish`: Publish a Stel project to Stel.io.
+* `Stel install`: Install a Stel project from Stel.io.
+* `Stel add`: Adds a package or library to the lock file.
 
-More about crab [here](https://github.com/crab-lang/crab)
+More about Stel [here](https://github.com/Stel-lang/Stel)
