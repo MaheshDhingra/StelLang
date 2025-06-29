@@ -3,10 +3,9 @@
 use super::ast::Expr;
 use std::collections::{HashMap, HashSet};
 use std::ops::Range as StdRange;
-mod exceptions;
-use exceptions::{Exception, ExceptionKind};
+use crate::lang::exceptions::{Exception, ExceptionKind};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Int(i64),
     Float(f64),
@@ -19,15 +18,15 @@ pub enum Value {
     List(Vec<Value>),
     Tuple(Vec<Value>),
     Range(RangeData),
-    Set(HashSet<Value>),
-    FrozenSet(HashSet<Value>),
-    Dict(HashMap<Value, Value>),
+    Set(std::collections::HashSet<Value>),
+    FrozenSet(std::collections::HashSet<Value>),
+    Dict(std::collections::HashMap<Value, Value>),
     Iterator(Box<dyn std::any::Any>), // Placeholder for trait object
     Generator(Box<dyn std::any::Any>), // Placeholder for trait object
     None,
     NotImplemented,
     Ellipsis,
-    Exception(Exception),
+    Exception(exceptions::Exception),
     Error(String), // Deprecated: use Exception
 }
 
@@ -49,17 +48,17 @@ impl Interpreter {
         // Built-in constants
         env.insert("True".to_string(), Value::Bool(true));
         env.insert("False".to_string(), Value::Bool(false));
-        env.insert("None".to_string(), Value::Null);
-        env.insert("NotImplemented".to_string(), Value::String("NotImplemented".to_string()));
-        env.insert("Ellipsis".to_string(), Value::String("...".to_string()));
+        env.insert("None".to_string(), Value::None);
+        env.insert("NotImplemented".to_string(), Value::NotImplemented);
+        env.insert("Ellipsis".to_string(), Value::Ellipsis);
         env.insert("__debug__".to_string(), Value::Bool(true));
         // Interactive shell constants (printable objects)
-        env.insert("quit".to_string(), Value::String("Use quit() or Ctrl-D (i.e. EOF) to exit".to_string()));
-        env.insert("exit".to_string(), Value::String("Use exit() or Ctrl-D (i.e. EOF) to exit".to_string()));
-        env.insert("help".to_string(), Value::String("Type help() for interactive help, or help(object) for help about object.".to_string()));
-        env.insert("copyright".to_string(), Value::String("Copyright (c) StelLang contributors".to_string()));
-        env.insert("credits".to_string(), Value::String("Thanks to all StelLang contributors!".to_string()));
-        env.insert("license".to_string(), Value::String("Type license() to see the full license text".to_string()));
+        env.insert("quit".to_string(), Value::Str("Use quit() or Ctrl-D (i.e. EOF) to exit".to_string()));
+        env.insert("exit".to_string(), Value::Str("Use exit() or Ctrl-D (i.e. EOF) to exit".to_string()));
+        env.insert("help".to_string(), Value::Str("Type help() for interactive help, or help(object) for help about object.".to_string()));
+        env.insert("copyright".to_string(), Value::Str("Copyright (c) StelLang contributors".to_string()));
+        env.insert("credits".to_string(), Value::Str("Thanks to all StelLang contributors!".to_string()));
+        env.insert("license".to_string(), Value::Str("Type license() to see the full license text".to_string()));
         Self { env, functions: HashMap::new() }
     }
 
@@ -80,9 +79,9 @@ impl Interpreter {
                 let mut map = HashMap::new();
                 for (k, v) in pairs {
                     let key = match self.eval_inner(k) {
-                        Value::Str(s) => s,
-                        Value::Int(n) => n.to_string(),
-                        _ => "".to_string(),
+                        Value::Str(s) => Value::Str(s),
+                        Value::Int(n) => Value::Str(n.to_string()),
+                        x => x,
                     };
                     let val = self.eval_inner(v);
                     map.insert(key, val);
@@ -101,11 +100,15 @@ impl Interpreter {
                         }
                     }
                     (Value::Dict(map), Value::Str(s)) => {
-                        map.get(&s).cloned().unwrap_or(Value::Exception(Exception::new(ExceptionKind::KeyError, vec![s])))
+                        map.get(&Value::Str(s)).cloned().unwrap_or(
+                            Value::Exception(Exception::new(ExceptionKind::KeyError, vec![s]))
+                        )
                     }
                     (Value::Dict(map), Value::Int(n)) => {
-                        let key = n.to_string();
-                        map.get(&key).cloned().unwrap_or(Value::Exception(Exception::new(ExceptionKind::KeyError, vec![key])))
+                        let key = Value::Str(n.to_string());
+                        map.get(&key).cloned().unwrap_or(
+                            Value::Exception(Exception::new(ExceptionKind::KeyError, vec![n.to_string()]))
+                        )
                     }
                     _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Invalid index operation".to_string()]))
                 }
@@ -123,14 +126,14 @@ impl Interpreter {
                         Value::List(arr)
                     }
                     (Value::Dict(mut map), Value::Str(s)) => {
-                        map.insert(s, val.clone());
+                        map.insert(Value::Str(s), val.clone());
                         Value::Dict(map)
                     }
                     (Value::Dict(mut map), Value::Int(n)) => {
-                        map.insert(n.to_string(), val.clone());
+                        map.insert(Value::Str(n.to_string()), val.clone());
                         Value::Dict(map)
                     }
-                    _ => Value::Int(0),
+                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Invalid index assignment".to_string()]))
                 }
             }
             Expr::BinaryOp { left, op, right } => {
@@ -142,14 +145,14 @@ impl Interpreter {
                         "-" => Value::Int(l - r),
                         "*" => Value::Int(l * r),
                         "/" => Value::Float((l as f64) / (r as f64)),
-                        "==" => Value::Int((l == r) as i32),
-                        "!=" => Value::Int((l != r) as i32),
-                        "<" => Value::Int((l < r) as i32),
-                        ">" => Value::Int((l > r) as i32),
-                        "<=" => Value::Int((l <= r) as i32),
-                        ">=" => Value::Int((l >= r) as i32),
-                        "and" => Value::Int(((l != 0) && (r != 0)) as i32),
-                        "or" => Value::Int(((l != 0) || (r != 0)) as i32),
+                        "==" => Value::Int((l == r) as i64),
+                        "!=" => Value::Int((l != r) as i64),
+                        "<" => Value::Int(((l as i64) < r) as i64),
+                        ">" => Value::Int((l > r) as i64),
+                        "<=" => Value::Int(((l as i64) <= r) as i64),
+                        ">=" => Value::Int((l >= r) as i64),
+                        "and" => Value::Int(((l != 0) && (r != 0)) as i64),
+                        "or" => Value::Int(((l != 0) || (r != 0)) as i64),
                         _ => Value::Int(0),
                     },
                     (Value::Float(l), Value::Float(r)) => match op.as_str() {
@@ -157,14 +160,14 @@ impl Interpreter {
                         "-" => Value::Float(l - r),
                         "*" => Value::Float(l * r),
                         "/" => Value::Float(l / r),
-                        "==" => Value::Int((l == r) as i32 as i64),
-                        "!=" => Value::Int((l != r) as i32 as i64),
-                        "<" => Value::Int((l < r) as i32 as i64),
-                        ">" => Value::Int((l > r) as i32 as i64),
-                        "<=" => Value::Int((l <= r) as i32 as i64),
-                        ">=" => Value::Int((l >= r) as i32 as i64),
-                        "and" => Value::Int(((l != 0.0) && (r != 0.0)) as i32 as i64),
-                        "or" => Value::Int(((l != 0.0) || (r != 0.0)) as i32 as i64),
+                        "==" => Value::Int((l == r) as i64),
+                        "!=" => Value::Int((l != r) as i64),
+                        "<" => Value::Int((l < r) as i64),
+                        ">" => Value::Int((l > r) as i64),
+                        "<=" => Value::Int((l <= r) as i64),
+                        ">=" => Value::Int((l >= r) as i64),
+                        "and" => Value::Int(((l != 0.0) && (r != 0.0)) as i64),
+                        "or" => Value::Int(((l != 0.0) || (r != 0.0)) as i64),
                         _ => Value::Int(0),
                     },
                     (Value::Int(l), Value::Float(r)) => match op.as_str() {
@@ -172,14 +175,14 @@ impl Interpreter {
                         "-" => Value::Float((l as f64) - r),
                         "*" => Value::Float((l as f64) * r),
                         "/" => Value::Float((l as f64) / r),
-                        "==" => Value::Int((l == r as i64) as i32),
-                        "!=" => Value::Int((l != r as i64) as i32),
-                        "<" => Value::Int((l < r as i64) as i32),
-                        ">" => Value::Int((l > r as i64) as i32),
-                        "<=" => Value::Int((l <= r as i64) as i32),
-                        ">=" => Value::Int((l >= r as i64) as i32),
-                        "and" => Value::Int(((l != 0) && (r != 0.0)) as i32),
-                        "or" => Value::Int(((l != 0) || (r != 0.0)) as i32),
+                        "==" => Value::Int((l == r as i64) as i64),
+                        "!=" => Value::Int((l != r as i64) as i64),
+                        "<" => Value::Int((l < r as i64) as i64),
+                        ">" => Value::Int((l > r as i64) as i64),
+                        "<=" => Value::Int((l <= r as i64) as i64),
+                        ">=" => Value::Int((l >= r as i64) as i64),
+                        "and" => Value::Int(((l != 0) && (r != 0.0)) as i64),
+                        "or" => Value::Int(((l != 0) || (r != 0.0)) as i64),
                         _ => Value::Int(0),
                     },
                     (Value::Float(l), Value::Int(r)) => match op.as_str() {
@@ -187,14 +190,14 @@ impl Interpreter {
                         "-" => Value::Float(l - (r as f64)),
                         "*" => Value::Float(l * (r as f64)),
                         "/" => Value::Float(l / (r as f64)),
-                        "==" => Value::Int((l as i64 == r) as i32),
-                        "!=" => Value::Int((l as i64 != r) as i32),
-                        "<" => Value::Int((l as i64 < r) as i32),
-                        ">" => Value::Int((l as i64 > r) as i32),
-                        "<=" => Value::Int((l as i64 <= r) as i32),
-                        ">=" => Value::Int((l as i64 >= r) as i32),
-                        "and" => Value::Int(((l != 0.0) && (r != 0)) as i32),
-                        "or" => Value::Int(((l != 0.0) || (r != 0)) as i32),
+                        "==" => Value::Int((l as i64 == r) as i64),
+                        "!=" => Value::Int((l as i64 != r) as i64),
+                        "<" => Value::Int((l as i64 < r) as i64),
+                        ">" => Value::Int((l as i64 > r) as i64),
+                        "<=" => Value::Int((l as i64 <= r) as i64),
+                        ">=" => Value::Int((l as i64 >= r) as i64),
+                        "and" => Value::Int(((l != 0.0) && (r != 0)) as i64),
+                        "or" => Value::Int(((l != 0.0) || (r != 0)) as i64),
                         _ => Value::Int(0),
                     },
                     (Value::Str(l), Value::Str(r)) if op == "+" => Value::Str(l + &r),
@@ -206,8 +209,8 @@ impl Interpreter {
                 match (op.as_str(), v) {
                     ("-", Value::Int(n)) => Value::Int(-n),
                     ("-", Value::Float(n)) => Value::Float(-n),
-                    ("not", Value::Int(n)) => Value::Int((n == 0) as i32),
-                    ("!", Value::Int(n)) => Value::Int((n == 0) as i32),
+                    ("not", Value::Int(n)) => Value::Int((n == 0) as i64),
+                    ("!", Value::Int(n)) => Value::Int((n == 0) as i64),
                     _ => Value::Int(0),
                 }
             }
@@ -470,12 +473,12 @@ impl Interpreter {
                         return self.eval_inner(res);
                     }
                 }
-                Value::Null
+                Value::None
             }
             Expr::StructDef { name, fields } => {
                 // Store struct definition in env as a marker
                 self.env.insert(format!("__struct__{}", name), Value::List(fields.iter().map(|f| Value::Str(f.clone())).collect()));
-                Value::Null
+                Value::None
             }
             Expr::StructInit { name, fields } => {
                 // Create a map with struct fields
@@ -489,7 +492,7 @@ impl Interpreter {
             Expr::EnumDef { name, variants } => {
                 // Store enum definition in env as a marker
                 self.env.insert(format!("__enum__{}", name), Value::List(variants.iter().map(|v| Value::Str(v.clone())).collect()));
-                Value::Null
+                Value::None
             }
             Expr::EnumInit { name, variant, value } => {
                 let mut map = std::collections::HashMap::new();
@@ -532,7 +535,7 @@ impl Interpreter {
                 let val = self.eval_inner(expr);
                 match val {
                     Value::Error(e) => panic!("Error: {}", e),
-                    Value::String(s) => panic!("Error: {}", s),
+                    Value::Str(s) => panic!("Error: {}", s),
                     _ => panic!("Error: thrown value"),
                 }
             }
@@ -571,7 +574,7 @@ impl Interpreter {
             (Value::Int(a), Value::Int(b)) => a == b,
             (Value::Str(a), Value::Str(b)) => a == b,
             (Value::Bool(a), Value::Bool(b)) => a == b,
-            (Value::Null, Value::Null) => true,
+            (Value::None, Value::None) => true,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Dict(a), Value::Dict(b)) => a == b,
             // Wildcard pattern: _
@@ -605,7 +608,7 @@ impl Value {
             }
             Value::Error(e) => format!("Error: {}", e),
             Value::Bool(b) => format!("{}", b),
-            Value::Null => "null".to_string(),
+            Value::None => "null".to_string(),
             Value::Bytes(b) => format!("b{:?}", b),
             Value::ByteArray(b) => format!("bytearray({:?})", b),
             Value::MemoryView(b) => format!("memoryview({:?})", b),
@@ -620,6 +623,37 @@ impl Value {
             }
             Value::Iterator(_) => "[iterator]".to_string(),
             Value::Generator(_) => "[generator]".to_string(),
+        }
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Int(a), Value::Int(b)) => a == b,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Str(a), Value::Str(b)) => a == b,
+            (Value::None, Value::None) => true,
+            (Value::NotImplemented, Value::NotImplemented) => true,
+            (Value::Ellipsis, Value::Ellipsis) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {}
+
+use std::hash::{Hash, Hasher};
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Value::Int(i) => i.hash(state),
+            Value::Bool(b) => b.hash(state),
+            Value::Str(s) => s.hash(state),
+            Value::None => 0.hash(state),
+            Value::NotImplemented => 1.hash(state),
+            Value::Ellipsis => 2.hash(state),
+            _ => panic!("Attempted to hash an unsupported Value variant"),
         }
     }
 }

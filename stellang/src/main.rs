@@ -1,16 +1,9 @@
-mod lang {
-    pub mod lexer;
-    pub mod parser;
-    pub mod ast;
-    pub mod interpreter;
-}
-
 use std::io::{self, Write};
 use std::fs;
-use lang::lexer::Lexer;
-use lang::parser::Parser;
-use lang::interpreter::Interpreter;
-use lang::lexer::Token;
+use stellang::lang::lexer::Lexer;
+use stellang::lang::parser::Parser;
+use stellang::lang::interpreter::Interpreter;
+use stellang::lang::lexer::Token;
 
 fn main() {
     println!("Welcome to StelLang!");
