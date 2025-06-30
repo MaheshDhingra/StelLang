@@ -86,7 +86,7 @@ const config = {
           { to: "/blog", label: "Blog", position: "left" },
           { to: "/community", label: "Community", position: "left" },
           {
-            href: "https://github.com/StelLang/stel",
+            href: "https://github.com/MaheshDhingra/StelLang",
             label: "GitHub",
             position: "right",
           },
@@ -114,15 +114,15 @@ const config = {
             items: [
               {
                 label: "Stack Overflow",
-                href: "https://stackoverflow.com/questions/tagged/stel",
+                href: "https://stackoverflow.com/questions/tagged/stellang",
               },
               {
                 label: "Discord",
-                href: "https://discord.gg/BX7uDaab",
+                href: "https://discord.gg/W4vJzEJb2C",
               },
               {
                 label: "Twitter",
-                href: "https://twitter.com/stelofficial1",
+                href: "https://twitter.com/stelofficial",
               },
             ],
           },
@@ -135,7 +135,7 @@ const config = {
               },
               {
                 label: "GitHub",
-                href: "https://github.com/StelLang/stel",
+                href: "https://github.com/MaheshDhingra/StelLang",
               },
             ],
           },
