@@ -12,7 +12,7 @@ Here are some of the ways you can get involved with the Stel community:
 
 * Forums: The official Stel forums are a great place to ask questions, get help from other Stel developers, and discuss all things Stel.
 
-* Chat: Join the Stel chat channel on **[Discord](https://discord.gg/BX7uDaab)** to chat with other Stel developers in real time.
+* Chat: Join the Stel chat channel on **[Discord](https://discord.gg/W4vJzEJb2C)** to chat with other Stel developers in real time.
 
 * Social Media: Follow Stel on social media to stay up-to-date on the latest news and announcements.
 
