@@ -27,7 +27,7 @@ const config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "stel-lang", // Usually your GitHub org/user name.
+  organizationName: "StelLang", // Usually your GitHub org/user name.
   projectName: "stel-docs", // Usually your repo name.
 
   onBrokenLinks: "throw",
@@ -50,11 +50,11 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          editUrl: "https://github.com/MaheshDhingra/stel-lang/tree/main/stellang/web/docs",
+          editUrl: "https://github.com/MaheshDhingra/StelLang/tree/main/stellang/web/docs",
         },
         blog: {
           showReadingTime: true,
-          editUrl: "https://github.com/MaheshDhingra/stel-lang/tree/main/stellang/web/docs",
+          editUrl: "https://github.com/MaheshDhingra/StelLang/tree/main/stellang/web/docs",
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -86,7 +86,7 @@ const config = {
           { to: "/blog", label: "Blog", position: "left" },
           { to: "/community", label: "Community", position: "left" },
           {
-            href: "https://github.com/stel-lang/stel",
+            href: "https://github.com/StelLang/stel",
             label: "GitHub",
             position: "right",
           },
@@ -135,7 +135,7 @@ const config = {
               },
               {
                 label: "GitHub",
-                href: "https://github.com/stel-lang/stel",
+                href: "https://github.com/StelLang/stel",
               },
             ],
           },

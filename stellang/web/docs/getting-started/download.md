@@ -22,7 +22,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Step 2: Git clone the Stel repository
 
 ```bash
-git clone https://github.com/Stel-lang/Stel.git
+git clone https://github.com/MaheshDhingra/StelLang
 ```
 
 Step 3: Build it

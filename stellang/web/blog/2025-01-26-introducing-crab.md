@@ -38,4 +38,4 @@ Stel has the following commands:
 * `Stel install`: Install a Stel project from Stel.io.
 * `Stel add`: Adds a package or library to the lock file.
 
-More about Stel [here](https://github.com/Stel-lang/Stel)
+More about Stel [here](https://github.com/MaheshDhingra/StelLang)
