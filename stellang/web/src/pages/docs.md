@@ -9,7 +9,7 @@ sidebar_position: 1
 Stel has a **Pythonic** yet **Functional**-like syntax. Which means if you know mostly about coding in Python,
 you'd probably appreciate this language.
 
-Stel file formats are either `.stel` or `.stel`, but `.stel` is widely recommended for now.
+Stel file formats are either `.stel` or `.stl`, but `.stel` is widely recommended for now.
 
 ## Features
 
