@@ -1,5 +1,7 @@
 // Lexer for StelLang
 
+use super::exceptions::{Exception, ExceptionKind};
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Integer(i64),
@@ -212,7 +214,7 @@ impl Lexer {
         }
     }
 
-    fn read_number(&mut self) -> Token {
+    fn read_number(&mut self) -> Result<Token, Exception> {
         let mut num = String::new();
         let mut is_float = false;
         while let Some(ch) = self.peek() {
@@ -228,9 +230,9 @@ impl Lexer {
             }
         }
         if is_float {
-            Token::Float(num.parse().unwrap())
+            num.parse::<f64>().map(Token::Float).map_err(|e| Exception::new(ExceptionKind::ValueError, vec![format!("Invalid float literal: {}", e)]))
         } else {
-            Token::Integer(num.parse().unwrap())
+            num.parse::<i64>().map(Token::Integer).map_err(|e| Exception::new(ExceptionKind::ValueError, vec![format!("Invalid integer literal: {}", e)]))
         }
     }
 
@@ -277,21 +279,27 @@ impl Lexer {
         }
     }
 
-    fn read_string(&mut self) -> Token {
+    fn read_string(&mut self) -> Result<Token, Exception> {
         let mut s = String::new();
         self.advance(); // skip opening quote
+        let mut closed = false;
         while let Some(ch) = self.peek() {
             if ch == '"' {
                 self.advance();
+                closed = true;
                 break;
             }
             s.push(ch);
             self.advance();
         }
-        Token::String(s)
+        if closed {
+            Ok(Token::String(s))
+        } else {
+            Err(Exception::new(ExceptionKind::SyntaxError, vec!["Unterminated string literal".to_string()]))
+        }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Result<Token, Exception> {
         self.skip_whitespace();
         // Skip comments
         if let Some('#') = self.peek() {
@@ -307,82 +315,82 @@ impl Lexer {
                 self.advance();
                 if let Some('=') = self.peek() {
                     self.advance();
-                    Token::Eq
+                    Ok(Token::Eq)
                 } else {
-                    Token::Assign
+                    Ok(Token::Assign)
                 }
             },
             Some('!') => {
                 self.advance();
                 if let Some('=') = self.peek() {
                     self.advance();
-                    Token::NotEq
+                    Ok(Token::NotEq)
                 } else {
-                    Token::Not
+                    Ok(Token::Not)
                 }
             },
             Some('<') => {
                 self.advance();
                 if let Some('=') = self.peek() {
                     self.advance();
-                    Token::Le
+                    Ok(Token::Le)
                 } else if let Some('<') = self.peek() {
                     self.advance();
-                    Token::Shl
+                    Ok(Token::Shl)
                 } else {
-                    Token::Lt
+                    Ok(Token::Lt)
                 }
             },
             Some('>') => {
                 self.advance();
                 if let Some('=') = self.peek() {
                     self.advance();
-                    Token::Ge
+                    Ok(Token::Ge)
                 } else if let Some('>') = self.peek() {
                     self.advance();
-                    Token::Shr
+                    Ok(Token::Shr)
                 } else {
-                    Token::Gt
+                    Ok(Token::Gt)
                 }
             },
-            Some('+') => { self.advance(); Token::Plus },
-            Some('-') => { self.advance(); Token::Minus },
+            Some('+') => { self.advance(); Ok(Token::Plus) },
+            Some('-') => { self.advance(); Ok(Token::Minus) },
             Some('*') => {
                 self.advance();
                 if let Some('*') = self.peek() {
                     self.advance();
-                    Token::Pow
+                    Ok(Token::Pow)
                 } else {
-                    Token::Star
+                    Ok(Token::Star)
                 }
             },
             Some('/') => {
                 self.advance();
                 if let Some('/') = self.peek() {
                     self.advance();
-                    Token::FloorDiv
+                    Ok(Token::FloorDiv)
                 } else {
-                    Token::Slash
+                    Ok(Token::Slash)
                 }
             },
-            Some('%') => { self.advance(); Token::Mod },
-            Some('&') => { self.advance(); Token::BitAnd },
-            Some('|') => { self.advance(); Token::BitOr },
-            Some('^') => { self.advance(); Token::BitXor },
-            Some('~') => { self.advance(); Token::BitNot },
-            Some('(') => { self.advance(); Token::LParen },
-            Some(')') => { self.advance(); Token::RParen },
-            Some('[') => { self.advance(); Token::LBracket },
-            Some(']') => { self.advance(); Token::RBracket },
-            Some('{') => { self.advance(); Token::LBrace },
-            Some('}') => { self.advance(); Token::RBrace },
-            Some(',') => { self.advance(); Token::Comma },
-            Some(';') => { self.advance(); Token::Semicolon },
-            Some('.') => { self.advance(); Token::Dot }, // Added for attribute access
+            Some('%') => { self.advance(); Ok(Token::Mod) },
+            Some('&') => { self.advance(); Ok(Token::BitAnd) },
+            Some('|') => { self.advance(); Ok(Token::BitOr) },
+            Some('^') => { self.advance(); Ok(Token::BitXor) },
+            Some('~') => { self.advance(); Ok(Token::BitNot) },
+            Some('(') => { self.advance(); Ok(Token::LParen) },
+            Some(')') => { self.advance(); Ok(Token::RParen) },
+            Some('[') => { self.advance(); Ok(Token::LBracket) },
+            Some(']') => { self.advance(); Ok(Token::RBracket) },
+            Some('{') => { self.advance(); Ok(Token::LBrace) },
+            Some('}') => { self.advance(); Ok(Token::RBrace) },
+            Some(',') => { self.advance(); Ok(Token::Comma) },
+            Some(';') => { self.advance(); Ok(Token::Semicolon) },
+            Some('.') => { self.advance(); Ok(Token::Dot) }, // Added for attribute access
             Some(ch) if ch.is_ascii_digit() => self.read_number(),
-            Some(ch) if ch.is_alphabetic() || ch == '_' => self.read_ident(),
-            Some(_) => { self.advance(); self.next_token() },
-            None => Token::EOF,
+            Some(ch) if ch.is_alphabetic() || ch == '_' => Ok(self.read_ident()),
+            Some(ch) => Err(Exception::new(ExceptionKind::SyntaxError, vec![format!("Unexpected character: {}", ch)])),
+            None => Ok(Token::EOF),
         }
     }
 }
