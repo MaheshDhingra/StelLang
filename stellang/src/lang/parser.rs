@@ -399,23 +399,185 @@ impl Parser {
     }
 
     fn parse_equality(&mut self) -> Option<Expr> {
-        // For now, just call parse_assignment (could expand for ==, !=, etc.)
-        self.parse_assignment()
-    }
-
-    fn parse_assignment(&mut self) -> Option<Expr> {
-        let expr = self.parse_term()?;
-        if let Token::Assign = self.peek() {
-            self.advance();
-            if let Expr::Ident(name) = expr {
-                let value = self.parse_expr()?;
-                return Some(Expr::Assign {
-                    name,
-                    expr: Box::new(value),
-                });
+        let mut node = self.parse_comparison()?;
+        loop {
+            match self.peek() {
+                Token::Eq => {
+                    self.advance();
+                    let right = self.parse_comparison()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "==".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::NotEq => {
+                    self.advance();
+                    let right = self.parse_comparison()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "!=".into(),
+                        right: Box::new(right),
+                    };
+                }
+                _ => break,
             }
         }
-        Some(expr)
+        Some(node)
+    }
+
+    fn parse_comparison(&mut self) -> Option<Expr> {
+        let mut node = self.parse_bitwise_or()?;
+        loop {
+            match self.peek() {
+                Token::Lt => {
+                    self.advance();
+                    let right = self.parse_bitwise_or()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "<".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::Gt => {
+                    self.advance();
+                    let right = self.parse_bitwise_or()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: ">".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::Le => {
+                    self.advance();
+                    let right = self.parse_bitwise_or()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "<=".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::Ge => {
+                    self.advance();
+                    let right = self.parse_bitwise_or()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: ">=".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::Is => {
+                    self.advance();
+                    let is_not = if let Some(Token::Not) = self.tokens.get(self.pos) {
+                        self.advance();
+                        true
+                    } else {
+                        false
+                    };
+                    let right = self.parse_bitwise_or()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: if is_not { "is not".into() } else { "is".into() },
+                        right: Box::new(right),
+                    };
+                }
+                Token::In => {
+                    self.advance();
+                    let right = self.parse_bitwise_or()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "in".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::Not => {
+                    if let Some(Token::In) = self.tokens.get(self.pos + 1) {
+                        self.advance(); // consume 'not'
+                        self.advance(); // consume 'in'
+                        let right = self.parse_bitwise_or()?;
+                        node = Expr::BinaryOp {
+                            left: Box::new(node),
+                            op: "not in".into(),
+                            right: Box::new(right),
+                        };
+                    } else {
+                        break;
+                    }
+                }
+                _ => break,
+            }
+        }
+        Some(node)
+    }
+
+    fn parse_bitwise_or(&mut self) -> Option<Expr> {
+        let mut node = self.parse_bitwise_xor()?;
+        while let Token::BitOr = self.peek() {
+            self.advance();
+            let right = self.parse_bitwise_xor()?;
+            node = Expr::BinaryOp {
+                left: Box::new(node),
+                op: "|".into(),
+                right: Box::new(right),
+            };
+        }
+        Some(node)
+    }
+
+    fn parse_bitwise_xor(&mut self) -> Option<Expr> {
+        let mut node = self.parse_bitwise_and()?;
+        while let Token::BitXor = self.peek() {
+            self.advance();
+            let right = self.parse_bitwise_and()?;
+            node = Expr::BinaryOp {
+                left: Box::new(node),
+                op: "^".into(),
+                right: Box::new(right),
+            };
+        }
+        Some(node)
+    }
+
+    fn parse_bitwise_and(&mut self) -> Option<Expr> {
+        let mut node = self.parse_shift()?;
+        while let Token::BitAnd = self.peek() {
+            self.advance();
+            let right = self.parse_shift()?;
+            node = Expr::BinaryOp {
+                left: Box::new(node),
+                op: "&".into(),
+                right: Box::new(right),
+            };
+        }
+        Some(node)
+    }
+
+    fn parse_shift(&mut self) -> Option<Expr> {
+        let mut node = self.parse_term()?;
+        loop {
+            match self.peek() {
+                Token::Shl => {
+                    self.advance();
+                    let right = self.parse_term()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "<<".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::Shr => {
+                    self.advance();
+                    let right = self.parse_term()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: ">>".into(),
+                        right: Box::new(right),
+                    };
+                }
+                _ => break,
+            }
+        }
+        Some(node)
     }
 
     fn parse_term(&mut self) -> Option<Expr> {
@@ -447,12 +609,12 @@ impl Parser {
     }
 
     fn parse_factor(&mut self) -> Option<Expr> {
-        let mut node = self.parse_unary()?;
+        let mut node = self.parse_power()?;
         loop {
             match self.peek() {
                 Token::Star => {
                     self.advance();
-                    let right = self.parse_unary()?;
+                    let right = self.parse_power()?;
                     node = Expr::BinaryOp {
                         left: Box::new(node),
                         op: "*".into(),
@@ -461,15 +623,47 @@ impl Parser {
                 }
                 Token::Slash => {
                     self.advance();
-                    let right = self.parse_unary()?;
+                    let right = self.parse_power()?;
                     node = Expr::BinaryOp {
                         left: Box::new(node),
                         op: "/".into(),
                         right: Box::new(right),
                     };
                 }
+                Token::Mod => {
+                    self.advance();
+                    let right = self.parse_power()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "%".into(),
+                        right: Box::new(right),
+                    };
+                }
+                Token::FloorDiv => {
+                    self.advance();
+                    let right = self.parse_power()?;
+                    node = Expr::BinaryOp {
+                        left: Box::new(node),
+                        op: "//".into(),
+                        right: Box::new(right),
+                    };
+                }
                 _ => break,
             }
+        }
+        Some(node)
+    }
+
+    fn parse_power(&mut self) -> Option<Expr> {
+        let mut node = self.parse_unary()?;
+        while let Token::Pow = self.peek() {
+            self.advance();
+            let right = self.parse_unary()?;
+            node = Expr::BinaryOp {
+                left: Box::new(node),
+                op: "**".into(),
+                right: Box::new(right),
+            };
         }
         Some(node)
     }
@@ -486,36 +680,76 @@ impl Parser {
                 let expr = self.parse_unary()?;
                 Some(Expr::UnaryOp { op: "-".into(), expr: Box::new(expr) })
             }
-            _ => self.parse_call(),
+            Token::BitNot => {
+                self.advance();
+                let expr = self.parse_unary()?;
+                Some(Expr::UnaryOp { op: "~".into(), expr: Box::new(expr) })
+            }
+            _ => self.parse_call_or_index(),
         }
     }
 
-    fn parse_call(&mut self) -> Option<Expr> {
+    fn parse_call_or_index(&mut self) -> Option<Expr> {
         let mut expr = self.parse_primary()?;
         loop {
-            if let Token::LParen = self.peek() {
-                self.advance();
-                let mut args = Vec::new();
-                if let Token::RParen = self.peek() {
+            match self.peek() {
+                Token::LParen => {
                     self.advance();
-                } else {
-                    loop {
-                        args.push(self.parse_expr()?);
-                        if let Token::Comma = self.peek() {
-                            self.advance();
-                        } else {
-                            break;
-                        }
-                    }
+                    let mut args = Vec::new();
                     if let Token::RParen = self.peek() {
                         self.advance();
+                    } else {
+                        loop {
+                            args.push(self.parse_expr()?);
+                            if let Token::Comma = self.peek() {
+                                self.advance();
+                            } else {
+                                break;
+                            }
+                        }
+                        if let Token::RParen = self.peek() {
+                            self.advance();
+                        } else {
+                            return None; // Error: expected closing parenthesis
+                        }
+                    }
+                    expr = Expr::FnCall { callable: Box::new(expr), args };
+                }
+                Token::LBracket => {
+                    self.advance();
+                    let index_expr = self.parse_expr()?;
+                    if let Token::RBracket = self.peek() {
+                        self.advance();
+                    } else {
+                        return None; // Error: expected closing bracket
+                    }
+                    // Check for assignment to index
+                    if let Token::Assign = self.peek() {
+                        self.advance();
+                        let assign_expr = self.parse_expr()?;
+                        expr = Expr::AssignIndex {
+                            collection: Box::new(expr),
+                            index: Box::new(index_expr),
+                            expr: Box::new(assign_expr),
+                        };
+                    } else {
+                        expr = Expr::Index {
+                            collection: Box::new(expr),
+                            index: Box::new(index_expr),
+                        };
                     }
                 }
-                if let Expr::Ident(name) = expr {
-                    expr = Expr::FnCall { name, args };
+                Token::Dot => {
+                    self.advance(); // consume '.'
+                    if let Token::Ident(name) = self.peek() {
+                        let name = name.clone();
+                        self.advance();
+                        expr = Expr::GetAttr { object: Box::new(expr), name };
+                    } else {
+                        return None; // Error: expected identifier after '.'
+                    }
                 }
-            } else {
-                break;
+                _ => break,
             }
         }
         Some(expr)

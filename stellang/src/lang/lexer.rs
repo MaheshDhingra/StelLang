@@ -29,14 +29,23 @@ pub enum Token {
     Not,
     EOF,
     // --- Extended tokens for future features, stdlib, and language expansion ---
-    Mod,
-    Pow,
-    Eq,
-    NotEq,
-    Lt,
-    Gt,
-    Le,
-    Ge,
+    Mod,      // %
+    Pow,      // **
+    Eq,       // ==
+    NotEq,    // !=
+    Lt,       // <
+    Gt,       // >
+    Le,       // <=
+    Ge,       // >=
+    FloorDiv, // //
+    BitAnd,   // &
+    BitOr,    // |
+    BitXor,   // ^
+    BitNot,   // ~
+    Shl,      // <<
+    Shr,      // >>
+    Is,       // is
+    In,       // in
     True,
     False,
     Null,
@@ -80,7 +89,6 @@ pub enum Token {
     Do,
     For,
     Foreach,
-    In,
     Of,
     Range,
     Step,
@@ -135,12 +143,6 @@ pub enum Token {
     Typename,
     Namespace,
     Using,
-    BitAnd,
-    BitOr,
-    BitXor,
-    BitNot,
-    Shl,
-    Shr,
     Question,
     Colon,
     DoubleColon,
@@ -156,13 +158,13 @@ pub enum Token {
     Tilde,
     Percent,
     Caret,
-    Dot,
-    DoubleDot,
-    TripleDot,
+    Dot,        // .
+    DoubleDot,  // ..
+    TripleDot,  // ...
     Semi,
     CommaTok,
-    LBracket,
-    RBracket,
+    LBracket,  // [
+    RBracket,  // ]
     LAngle,
     RAngle,
     LCurly,
@@ -186,6 +188,10 @@ impl Lexer {
 
     fn peek(&self) -> Option<char> {
         self.input.get(self.pos).copied()
+    }
+
+    fn peek_next(&self) -> Option<char> {
+        self.input.get(self.pos + 1).copied()
     }
 
     fn advance(&mut self) -> Option<char> {
@@ -262,6 +268,7 @@ impl Lexer {
             "enum" => Token::Enum,
             "for" => Token::For,
             "in" => Token::In,
+            "is" => Token::Is,
             "try" => Token::Try,
             "catch" => Token::Catch,
             "throw" => Token::Throw,
@@ -296,17 +303,82 @@ impl Lexer {
         }
         match self.peek() {
             Some('"') => self.read_string(),
-            Some('=') => { self.advance(); Token::Assign },
+            Some('=') => {
+                self.advance();
+                if let Some('=') = self.peek() {
+                    self.advance();
+                    Token::Eq
+                } else {
+                    Token::Assign
+                }
+            },
+            Some('!') => {
+                self.advance();
+                if let Some('=') = self.peek() {
+                    self.advance();
+                    Token::NotEq
+                } else {
+                    Token::Not
+                }
+            },
+            Some('<') => {
+                self.advance();
+                if let Some('=') = self.peek() {
+                    self.advance();
+                    Token::Le
+                } else if let Some('<') = self.peek() {
+                    self.advance();
+                    Token::Shl
+                } else {
+                    Token::Lt
+                }
+            },
+            Some('>') => {
+                self.advance();
+                if let Some('=') = self.peek() {
+                    self.advance();
+                    Token::Ge
+                } else if let Some('>') = self.peek() {
+                    self.advance();
+                    Token::Shr
+                } else {
+                    Token::Gt
+                }
+            },
             Some('+') => { self.advance(); Token::Plus },
             Some('-') => { self.advance(); Token::Minus },
-            Some('*') => { self.advance(); Token::Star },
-            Some('/') => { self.advance(); Token::Slash },
+            Some('*') => {
+                self.advance();
+                if let Some('*') = self.peek() {
+                    self.advance();
+                    Token::Pow
+                } else {
+                    Token::Star
+                }
+            },
+            Some('/') => {
+                self.advance();
+                if let Some('/') = self.peek() {
+                    self.advance();
+                    Token::FloorDiv
+                } else {
+                    Token::Slash
+                }
+            },
+            Some('%') => { self.advance(); Token::Mod },
+            Some('&') => { self.advance(); Token::BitAnd },
+            Some('|') => { self.advance(); Token::BitOr },
+            Some('^') => { self.advance(); Token::BitXor },
+            Some('~') => { self.advance(); Token::BitNot },
             Some('(') => { self.advance(); Token::LParen },
             Some(')') => { self.advance(); Token::RParen },
+            Some('[') => { self.advance(); Token::LBracket },
+            Some(']') => { self.advance(); Token::RBracket },
             Some('{') => { self.advance(); Token::LBrace },
             Some('}') => { self.advance(); Token::RBrace },
             Some(',') => { self.advance(); Token::Comma },
             Some(';') => { self.advance(); Token::Semicolon },
+            Some('.') => { self.advance(); Token::Dot }, // Added for attribute access
             Some(ch) if ch.is_ascii_digit() => self.read_number(),
             Some(ch) if ch.is_alphabetic() || ch == '_' => self.read_ident(),
             Some(_) => { self.advance(); self.next_token() },

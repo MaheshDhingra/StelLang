@@ -12,3 +12,7 @@ path = "src/main.rs"
 [[bin]]
 name = "pico"
 path = "src/bin/pico.rs"
+
+[[test]]
+name = "operator_tests"
+path = "tests/operator_tests.rs"

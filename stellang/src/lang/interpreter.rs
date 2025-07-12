@@ -1,8 +1,7 @@
 // Interpreter for StelLang
 
 use super::ast::Expr;
-use std::collections::{HashMap, HashSet};
-use std::ops::Range as StdRange;
+use std::collections::HashMap;
 use crate::lang::exceptions::{Exception, ExceptionKind};
 
 #[derive(Debug, Clone)]
@@ -27,7 +26,10 @@ pub enum Value {
     NotImplemented,
     Ellipsis,
     Exception(exceptions::Exception),
-    Error(String), // Deprecated: use Exception
+    BuiltinMethod {
+        object: Box<Value>,
+        method_name: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -71,18 +73,14 @@ impl Interpreter {
             Expr::Integer(n) => Value::Int(*n),
             Expr::Float(f) => Value::Float(*f),
             Expr::String(s) => Value::Str(s.clone()),
-            Expr::Ident(name) => self.env.get(name).cloned().unwrap_or(Value::Int(0)),
+            Expr::Ident(name) => self.env.get(name).cloned().unwrap_or(Value::None), // Changed default to None
             Expr::ArrayLiteral(items) => {
                 Value::List(items.iter().map(|e| self.eval_inner(e)).collect())
             }
             Expr::MapLiteral(pairs) => {
                 let mut map = HashMap::new();
                 for (k, v) in pairs {
-                    let key = match self.eval_inner(k) {
-                        Value::Str(s) => Value::Str(s),
-                        Value::Int(n) => Value::Str(n.to_string()),
-                        x => x,
-                    };
+                    let key = self.eval_inner(k);
                     let val = self.eval_inner(v);
                     map.insert(key, val);
                 }
@@ -99,41 +97,78 @@ impl Interpreter {
                             arr.get(n as usize).cloned().unwrap_or(Value::None)
                         }
                     }
-                    (Value::Dict(map), Value::Str(s)) => {
-                        map.get(&Value::Str(s)).cloned().unwrap_or(
-                            Value::Exception(Exception::new(ExceptionKind::KeyError, vec![s]))
-                        )
-                    }
-                    (Value::Dict(map), Value::Int(n)) => {
-                        let key = Value::Str(n.to_string());
+                    (Value::Dict(map), key) => {
                         map.get(&key).cloned().unwrap_or(
-                            Value::Exception(Exception::new(ExceptionKind::KeyError, vec![n.to_string()]))
+                            Value::Exception(Exception::new(ExceptionKind::KeyError, vec![key.to_display_string()]))
                         )
                     }
-                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Invalid index operation".to_string()]))
+                    (Value::Str(s), Value::Int(n)) => {
+                        if n < 0 || n as usize >= s.len() {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("string index {} out of range", n)]))
+                        } else {
+                            s.chars().nth(n as usize).map(|c| Value::Str(c.to_string())).unwrap_or(Value::None)
+                        }
+                    }
+                    (Value::Bytes(b), Value::Int(n)) => {
+                        if n < 0 || n as usize >= b.len() {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("bytes index {} out of range", n)]))
+                        } else {
+                            b.get(n as usize).map(|&byte| Value::Int(byte as i64)).unwrap_or(Value::None)
+                        }
+                    }
+                    (Value::ByteArray(b), Value::Int(n)) => {
+                        if n < 0 || n as usize >= b.len() {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("bytearray index {} out of range", n)]))
+                        } else {
+                            b.get(n as usize).map(|&byte| Value::Int(byte as i64)).unwrap_or(Value::None)
+                        }
+                    }
+                    (Value::Tuple(t), Value::Int(n)) => {
+                        if n < 0 || n as usize >= t.len() {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("tuple index {} out of range", n)]))
+                        } else {
+                            t.get(n as usize).cloned().unwrap_or(Value::None)
+                        }
+                    }
+                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("'{}' object is not subscriptable", coll.type_name())]))
                 }
             }
             Expr::AssignIndex { collection, index, expr } => {
-                let coll = self.eval_inner(collection);
+                let mut coll = self.eval_inner(collection);
                 let idx = self.eval_inner(index);
                 let val = self.eval_inner(expr);
-                match (coll, idx) {
-                    (Value::List(mut arr), Value::Int(n)) => {
+                match (&mut coll, idx) {
+                    (Value::List(arr), Value::Int(n)) => {
                         let i = n as usize;
                         if i < arr.len() {
                             arr[i] = val.clone();
+                            coll
+                        } else {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("list assignment index {} out of range", n)]))
                         }
-                        Value::List(arr)
                     }
-                    (Value::Dict(mut map), Value::Str(s)) => {
-                        map.insert(Value::Str(s), val.clone());
-                        Value::Dict(map)
+                    (Value::Dict(map), key) => {
+                        map.insert(key, val.clone());
+                        coll
                     }
-                    (Value::Dict(mut map), Value::Int(n)) => {
-                        map.insert(Value::Str(n.to_string()), val.clone());
-                        Value::Dict(map)
+                    (Value::ByteArray(arr), Value::Int(n)) => {
+                        let i = n as usize;
+                        if i < arr.len() {
+                            if let Value::Int(byte_val) = val {
+                                if byte_val >= 0 && byte_val <= 255 {
+                                    arr[i] = byte_val as u8;
+                                    coll
+                                } else {
+                                    Value::Exception(Exception::new(ExceptionKind::ValueError, vec!["byte must be in range(0, 256)".to_string()]))
+                                }
+                            } else {
+                                Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["bytearray assignment must be an integer".to_string()]))
+                            }
+                        } else {
+                            Value::Exception(Exception::new(ExceptionKind::IndexError, vec![format!("bytearray assignment index {} out of range", n)]))
+                        }
                     }
-                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Invalid index assignment".to_string()]))
+                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("'{}' object does not support item assignment", coll.type_name())]))
                 }
             }
             Expr::BinaryOp { left, op, right } => {
@@ -144,64 +179,222 @@ impl Interpreter {
                         "+" => Value::Int(l + r),
                         "-" => Value::Int(l - r),
                         "*" => Value::Int(l * r),
-                        "/" => Value::Float((l as f64) / (r as f64)),
-                        "==" => Value::Int((l == r) as i64),
-                        "!=" => Value::Int((l != r) as i64),
-                        "<" => Value::Int(((l as i64) < r) as i64),
-                        ">" => Value::Int((l > r) as i64),
-                        "<=" => Value::Int(((l as i64) <= r) as i64),
-                        ">=" => Value::Int((l >= r) as i64),
-                        "and" => Value::Int(((l != 0) && (r != 0)) as i64),
-                        "or" => Value::Int(((l != 0) || (r != 0)) as i64),
-                        _ => Value::Int(0),
+                        "/" => {
+                            if r == 0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["division by zero".to_string()]));
+                            }
+                            Value::Float((l as f64) / (r as f64))
+                        },
+                        "//" => {
+                            if r == 0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["integer division by zero".to_string()]));
+                            }
+                            Value::Int(l / r)
+                        },
+                        "%" => {
+                            if r == 0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["modulo by zero".to_string()]));
+                            }
+                            Value::Int(l % r)
+                        },
+                        "**" => Value::Float((l as f64).powf(r as f64)),
+                        "&" => Value::Int(l & r),
+                        "|" => Value::Int(l | r),
+                        "^" => Value::Int(l ^ r),
+                        "<<" => Value::Int(l << r),
+                        ">>" => Value::Int(l >> r),
+                        "==" => Value::Bool(l == r),
+                        "!=" => Value::Bool(l != r),
+                        "<" => Value::Bool(l < r),
+                        ">" => Value::Bool(l > r),
+                        "<=" => Value::Bool(l <= r),
+                        ">=" => Value::Bool(l >= r),
+                        "and" => Value::Bool((l != 0) && (r != 0)),
+                        "or" => Value::Bool((l != 0) || (r != 0)),
+                        "is" => Value::Bool(l == r), // For primitive types, 'is' is value equality
+                        "is not" => Value::Bool(l != r),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: 'int' and 'int'", op)])),
                     },
                     (Value::Float(l), Value::Float(r)) => match op.as_str() {
                         "+" => Value::Float(l + r),
                         "-" => Value::Float(l - r),
                         "*" => Value::Float(l * r),
-                        "/" => Value::Float(l / r),
-                        "==" => Value::Int((l == r) as i64),
-                        "!=" => Value::Int((l != r) as i64),
-                        "<" => Value::Int((l < r) as i64),
-                        ">" => Value::Int((l > r) as i64),
-                        "<=" => Value::Int((l <= r) as i64),
-                        ">=" => Value::Int((l >= r) as i64),
-                        "and" => Value::Int(((l != 0.0) && (r != 0.0)) as i64),
-                        "or" => Value::Int(((l != 0.0) || (r != 0.0)) as i64),
-                        _ => Value::Int(0),
+                        "/" => {
+                            if r == 0.0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["division by zero".to_string()]));
+                            }
+                            Value::Float(l / r)
+                        },
+                        "//" => {
+                            if r == 0.0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["float floor division by zero".to_string()]));
+                            }
+                            Value::Float((l / r).floor())
+                        },
+                        "%" => {
+                            if r == 0.0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["float modulo by zero".to_string()]));
+                            }
+                            Value::Float(l % r)
+                        },
+                        "**" => Value::Float(l.powf(r)),
+                        "==" => Value::Bool(l == r),
+                        "!=" => Value::Bool(l != r),
+                        "<" => Value::Bool(l < r),
+                        ">" => Value::Bool(l > r),
+                        "<=" => Value::Bool(l <= r),
+                        ">=" => Value::Bool(l >= r),
+                        "and" => Value::Bool((l != 0.0) && (r != 0.0)),
+                        "or" => Value::Bool((l != 0.0) || (r != 0.0)),
+                        "is" => Value::Bool(l == r),
+                        "is not" => Value::Bool(l != r),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: 'float' and 'float'", op)])),
                     },
                     (Value::Int(l), Value::Float(r)) => match op.as_str() {
                         "+" => Value::Float((l as f64) + r),
                         "-" => Value::Float((l as f64) - r),
                         "*" => Value::Float((l as f64) * r),
-                        "/" => Value::Float((l as f64) / r),
-                        "==" => Value::Int((l == r as i64) as i64),
-                        "!=" => Value::Int((l != r as i64) as i64),
-                        "<" => Value::Int((l < r as i64) as i64),
-                        ">" => Value::Int((l > r as i64) as i64),
-                        "<=" => Value::Int((l <= r as i64) as i64),
-                        ">=" => Value::Int((l >= r as i64) as i64),
-                        "and" => Value::Int(((l != 0) && (r != 0.0)) as i64),
-                        "or" => Value::Int(((l != 0) || (r != 0.0)) as i64),
-                        _ => Value::Int(0),
+                        "/" => {
+                            if r == 0.0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["division by zero".to_string()]));
+                            }
+                            Value::Float((l as f64) / r)
+                        },
+                        "//" => {
+                            if r == 0.0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["float floor division by zero".to_string()]));
+                            }
+                            Value::Float(((l as f64) / r).floor())
+                        },
+                        "%" => {
+                            if r == 0.0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["float modulo by zero".to_string()]));
+                            }
+                            Value::Float((l as f64) % r)
+                        },
+                        "**" => Value::Float((l as f64).powf(r)),
+                        "==" => Value::Bool((l as f64) == r),
+                        "!=" => Value::Bool((l as f64) != r),
+                        "<" => Value::Bool((l as f64) < r),
+                        ">" => Value::Bool((l as f64) > r),
+                        "<=" => Value::Bool((l as f64) <= r),
+                        ">=" => Value::Bool((l as f64) >= r),
+                        "and" => Value::Bool(((l != 0) && (r != 0.0))),
+                        "or" => Value::Bool(((l != 0) || (r != 0.0))),
+                        "is" => Value::Bool((l as f64) == r),
+                        "is not" => Value::Bool((l as f64) != r),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: 'int' and 'float'", op)])),
                     },
                     (Value::Float(l), Value::Int(r)) => match op.as_str() {
                         "+" => Value::Float(l + (r as f64)),
                         "-" => Value::Float(l - (r as f64)),
                         "*" => Value::Float(l * (r as f64)),
-                        "/" => Value::Float(l / (r as f64)),
-                        "==" => Value::Int((l as i64 == r) as i64),
-                        "!=" => Value::Int((l as i64 != r) as i64),
-                        "<" => Value::Int((l as i64 < r) as i64),
-                        ">" => Value::Int((l as i64 > r) as i64),
-                        "<=" => Value::Int((l as i64 <= r) as i64),
-                        ">=" => Value::Int((l as i64 >= r) as i64),
-                        "and" => Value::Int(((l != 0.0) && (r != 0)) as i64),
-                        "or" => Value::Int(((l != 0.0) || (r != 0)) as i64),
-                        _ => Value::Int(0),
+                        "/" => {
+                            if r == 0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["division by zero".to_string()]));
+                            }
+                            Value::Float(l / (r as f64))
+                        },
+                        "//" => {
+                            if r == 0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["float floor division by zero".to_string()]));
+                            }
+                            Value::Float((l / (r as f64)).floor())
+                        },
+                        "%" => {
+                            if r == 0 {
+                                return Value::Exception(Exception::new(ExceptionKind::ZeroDivisionError, vec!["float modulo by zero".to_string()]));
+                            }
+                            Value::Float(l % (r as f64))
+                        },
+                        "**" => Value::Float(l.powf(r as f64)),
+                        "==" => Value::Bool(l == (r as f64)),
+                        "!=" => Value::Bool(l != (r as f64)),
+                        "<" => Value::Bool(l < (r as f64)),
+                        ">" => Value::Bool(l > (r as f64)),
+                        "<=" => Value::Bool(l <= (r as f64)),
+                        ">=" => Value::Bool(l >= (r as f64)),
+                        "and" => Value::Bool(((l != 0.0) && (r != 0))),
+                        "or" => Value::Bool(((l != 0.0) || (r != 0))),
+                        "is" => Value::Bool(l == (r as f64)),
+                        "is not" => Value::Bool(l != (r as f64)),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: 'float' and 'int'", op)])),
                     },
-                    (Value::Str(l), Value::Str(r)) if op == "+" => Value::Str(l + &r),
-                    _ => Value::Int(0),
+                    (Value::Str(l), Value::Str(r)) => match op.as_str() {
+                        "+" => Value::Str(l + &r),
+                        "==" => Value::Bool(l == r),
+                        "!=" => Value::Bool(l != r),
+                        "<" => Value::Bool(l < r),
+                        ">" => Value::Bool(l > r),
+                        "<=" => Value::Bool(l <= r),
+                        ">=" => Value::Bool(l >= r),
+                        "is" => Value::Bool(l == r),
+                        "is not" => Value::Bool(l != r),
+                        "in" => Value::Bool(r.contains(l)),
+                        "not in" => Value::Bool(!r.contains(l)),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: 'str' and 'str'", op)])),
+                    },
+                    (Value::Str(l), Value::Int(r)) if op == "*" => {
+                        if r < 0 {
+                            return Value::Exception(Exception::new(ExceptionKind::ValueError, vec!["negative repetition count".to_string()]));
+                        }
+                        Value::Str(l.repeat(r as usize))
+                    },
+                    (Value::Int(l), Value::Str(r)) if op == "*" => {
+                        if l < 0 {
+                            return Value::Exception(Exception::new(ExceptionKind::ValueError, vec!["negative repetition count".to_string()]));
+                        }
+                        Value::Str(r.repeat(l as usize))
+                    },
+                    (Value::Bool(l), Value::Bool(r)) => match op.as_str() {
+                        "and" => Value::Bool(l && r),
+                        "or" => Value::Bool(l || r),
+                        "==" => Value::Bool(l == r),
+                        "!=" => Value::Bool(l != r),
+                        "is" => Value::Bool(l == r),
+                        "is not" => Value::Bool(l != r),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: 'bool' and 'bool'", op)])),
+                    },
+                    (Value::List(l), Value::List(r)) if op == "+" => {
+                        let mut new_list = l.clone();
+                        new_list.extend(r.clone());
+                        Value::List(new_list)
+                    },
+                    (Value::List(l), Value::Int(r)) if op == "*" => {
+                        if r < 0 {
+                            return Value::Exception(Exception::new(ExceptionKind::ValueError, vec!["negative repetition count".to_string()]));
+                        }
+                        let mut new_list = Vec::new();
+                        for _ in 0..(r as usize) {
+                            new_list.extend_from_slice(&l);
+                        }
+                        Value::List(new_list)
+                    },
+                    (Value::Int(l), Value::List(r)) if op == "*" => {
+                        if l < 0 {
+                            return Value::Exception(Exception::new(ExceptionKind::ValueError, vec!["negative repetition count".to_string()]));
+                        }
+                        let mut new_list = Vec::new();
+                        for _ in 0..(l as usize) {
+                            new_list.extend_from_slice(&r);
+                        }
+                        Value::List(new_list)
+                    },
+                    (Value::List(l), r_val) if op == "in" => {
+                        Value::Bool(l.contains(&r_val))
+                    },
+                    (Value::List(l), r_val) if op == "not in" => {
+                        Value::Bool(!l.contains(&r_val))
+                    },
+                    (Value::None, Value::None) if op == "is" => Value::Bool(true),
+                    (Value::None, Value::None) if op == "is not" => Value::Bool(false),
+                    (Value::None, _) if op == "is" => Value::Bool(false),
+                    (Value::None, _) if op == "is not" => Value::Bool(true),
+                    (_, Value::None) if op == "is" => Value::Bool(false),
+                    (_, Value::None) if op == "is not" => Value::Bool(true),
+                    (l_val, r_val) if op == "is" => Value::Bool(l_val == r_val), // Fallback for other types
+                    (l_val, r_val) if op == "is not" => Value::Bool(l_val != r_val), // Fallback for other types
+                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("unsupported operand type(s) for {}: '{}' and '{}'", op, l.type_name(), r.type_name())])),
                 }
             }
             Expr::UnaryOp { op, expr } => {
@@ -209,9 +402,10 @@ impl Interpreter {
                 match (op.as_str(), v) {
                     ("-", Value::Int(n)) => Value::Int(-n),
                     ("-", Value::Float(n)) => Value::Float(-n),
-                    ("not", Value::Int(n)) => Value::Int((n == 0) as i64),
-                    ("!", Value::Int(n)) => Value::Int((n == 0) as i64),
-                    _ => Value::Int(0),
+                    ("not", Value::Bool(b)) => Value::Bool(!b),
+                    ("not", Value::Int(n)) => Value::Bool(n == 0),
+                    ("~", Value::Int(n)) => Value::Int(!n),
+                    _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec![format!("bad operand type for unary {}: '{}'", op, v.type_name())])),
                 }
             }
             Expr::Assign { name, expr } => {
@@ -234,13 +428,13 @@ impl Interpreter {
                 self.env.insert(name.clone(), val.clone());
                 val
             }
-            Expr::Bool(b) => Value::Int(if *b { 1 } else { 0 }),
-            Expr::Null => Value::Int(0),
+            Expr::Bool(b) => Value::Bool(*b),
+            Expr::Null => Value::None,
             Expr::Block(exprs) => {
-                let mut last = Value::Int(0);
+                let mut last = Value::None;
                 for e in exprs {
                     match self.eval_inner(e) {
-                        Value::Error(ref s) if s == "__break__" || s == "__continue__" => return Value::Error(s.clone()),
+                        Value::Exception(ref exc) if exc.kind == ExceptionKind::Break || exc.kind == ExceptionKind::Continue => return Value::Exception(exc.clone()),
                         v => last = v,
                     }
                 }
@@ -248,21 +442,21 @@ impl Interpreter {
             }
             Expr::If { cond, then_branch, else_branch } => {
                 let cond_val = self.eval_inner(cond);
-                let cond_num = match cond_val { Value::Int(n) => n, _ => 0 };
-                if cond_num != 0 {
+                let cond_bool = cond_val.is_truthy();
+                if cond_bool {
                     self.eval_inner(then_branch)
                 } else if let Some(else_b) = else_branch {
                     self.eval_inner(else_b)
                 } else {
-                    Value::Int(0)
+                    Value::None
                 }
             }
             Expr::While { cond, body } => {
-                let mut last = Value::Int(0);
-                'outer: while match self.eval_inner(cond) { Value::Int(n) => n != 0, _ => false } {
+                let mut last = Value::None;
+                'outer: while self.eval_inner(cond).is_truthy() {
                     match self.eval_inner(body) {
-                        Value::Error(ref s) if s == "__break__" => break 'outer,
-                        Value::Error(ref s) if s == "__continue__" => continue 'outer,
+                        Value::Exception(ref exc) if exc.kind == ExceptionKind::Break => break 'outer,
+                        Value::Exception(ref exc) if exc.kind == ExceptionKind::Continue => continue 'outer,
                         v => last = v,
                     }
                 }
@@ -270,9 +464,37 @@ impl Interpreter {
             }
             Expr::FnDef { name, params, body } => {
                 self.functions.insert(name.clone(), (params.clone(), *body.clone()));
-                Value::Int(0)
+                Value::None
             }
             Expr::FnCall { name, args } => {
+                // --- Built-in functions (e.g., print, input) ---
+                match name.as_str() {
+                    "print" => {
+                        let mut output = String::new();
+                        for (i, arg) in args.iter().enumerate() {
+                            output.push_str(&self.eval_inner(arg).to_display_string());
+                            if i < args.len() - 1 {
+                                output.push(' ');
+                            }
+                        }
+                        println!("{}", output);
+                        return Value::None;
+                    }
+                    "input" => {
+                        let prompt = if !args.is_empty() {
+                            self.eval_inner(&args[0]).to_display_string()
+                        } else {
+                            "".to_string()
+                        };
+                        print!("{}", prompt);
+                        use std::io::{self, Write};
+                        io::stdout().flush().unwrap();
+                        let mut input = String::new();
+                        io::stdin().read_line(&mut input).expect("Failed to read line");
+                        return Value::Str(input.trim_end_matches(&['\r', '\n'][..]).to_string());
+                    }
+                    _ => { /* continue to check for bytes/bytearray methods or user-defined functions */ }
+                }
                 // --- Bytes and ByteArray methods ---
                 let is_bytes_method = [
                     "isalnum", "isalpha", "isascii", "isdigit", "islower", "isspace", "istitle", "isupper", "lower", "splitlines", "swapcase", "title", "upper", "zfill"
@@ -286,45 +508,45 @@ impl Interpreter {
                     let make_result = |orig: &Value, b: Vec<u8>| match orig {
                         Value::Bytes(_) => Value::Bytes(b),
                         Value::ByteArray(_) => Value::ByteArray(b),
-                        _ => Value::Error("Not a bytes or bytearray object".to_string()),
+                        _ => Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["Not a bytes or bytearray object".to_string()])),
                     };
                     match name.as_str() {
                         "isalnum" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let isalnum = !b.is_empty() && b.iter().all(|c| (b'a' <= *c && *c <= b'z') || (b'A' <= *c && *c <= b'Z') || (b'0' <= *c && *c <= b'9'));
                                 Value::Bool(isalnum)
-                            } else { Value::Error("isalnum: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["isalnum() on non-bytes/bytearray object".to_string()])) }
                         }
                         "isalpha" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let isalpha = !b.is_empty() && b.iter().all(|c| (b'a' <= *c && *c <= b'z') || (b'A' <= *c && *c <= b'Z'));
                                 Value::Bool(isalpha)
-                            } else { Value::Error("isalpha: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["isalpha() on non-bytes/bytearray object".to_string()])) }
                         }
                         "isascii" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let isascii = b.iter().all(|c| *c <= 0x7F);
                                 Value::Bool(isascii)
-                            } else { Value::Error("isascii: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["isascii() on non-bytes/bytearray object".to_string()])) }
                         }
                         "isdigit" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let isdigit = !b.is_empty() && b.iter().all(|c| b'0' <= *c && *c <= b'9');
                                 Value::Bool(isdigit)
-                            } else { Value::Error("isdigit: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["isdigit() on non-bytes/bytearray object".to_string()])) }
                         }
                         "islower" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let has_lower = b.iter().any(|c| b'a' <= *c && *c <= b'z');
                                 let has_upper = b.iter().any(|c| b'A' <= *c && *c <= b'Z');
                                 Value::Bool(has_lower && !has_upper)
-                            } else { Value::Error("islower: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["islower() on non-bytes/bytearray object".to_string()])) }
                         }
                         "isspace" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let isspace = !b.is_empty() && b.iter().all(|c| matches!(c, b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c));
                                 Value::Bool(isspace)
-                            } else { Value::Error("isspace: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["isspace() on non-bytes/bytearray object".to_string()])) }
                         }
                         "istitle" => {
                             if let Some(b) = as_bytes(&obj) {
@@ -348,20 +570,20 @@ impl Interpreter {
                                     }
                                 }
                                 Value::Bool(seen && is_title)
-                            } else { Value::Error("istitle: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["istitle() on non-bytes/bytearray object".to_string()])) }
                         }
                         "isupper" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let has_upper = b.iter().any(|c| b'A' <= *c && *c <= b'Z');
                                 let has_lower = b.iter().any(|c| b'a' <= *c && *c <= b'z');
                                 Value::Bool(has_upper && !has_lower)
-                            } else { Value::Error("isupper: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["isupper() on non-bytes/bytearray object".to_string()])) }
                         }
                         "lower" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let out = b.iter().map(|c| if b'A' <= *c && *c <= b'Z' { *c + 32 } else { *c }).collect();
                                 make_result(&obj, out)
-                            } else { Value::Error("lower: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["lower() on non-bytes/bytearray object".to_string()])) }
                         }
                         "splitlines" => {
                             let keepends = rest.get(0).map(|v| self.eval_inner(v)).map(|v| matches!(v, Value::Bool(true) | Value::Int(1))).unwrap_or(false);
@@ -395,7 +617,7 @@ impl Interpreter {
                                     lines.push(make_result(&obj, b[start..].to_vec()));
                                 }
                                 Value::List(lines)
-                            } else { Value::Error("splitlines: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["splitlines() on non-bytes/bytearray object".to_string()])) }
                         }
                         "swapcase" => {
                             if let Some(b) = as_bytes(&obj) {
@@ -405,7 +627,7 @@ impl Interpreter {
                                     else { *c }
                                 }).collect();
                                 make_result(&obj, out)
-                            } else { Value::Error("swapcase: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["swapcase() on non-bytes/bytearray object".to_string()])) }
                         }
                         "title" => {
                             if let Some(b) = as_bytes(&obj) {
@@ -426,13 +648,13 @@ impl Interpreter {
                                     }
                                 }
                                 make_result(&obj, out)
-                            } else { Value::Error("title: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["title() on non-bytes/bytearray object".to_string()])) }
                         }
                         "upper" => {
                             if let Some(b) = as_bytes(&obj) {
                                 let out = b.iter().map(|c| if b'a' <= *c && *c <= b'z' { *c - 32 } else { *c }).collect();
                                 make_result(&obj, out)
-                            } else { Value::Error("upper: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["upper() on non-bytes/bytearray object".to_string()])) }
                         }
                         "zfill" => {
                             if let Some(b) = as_bytes(&obj) {
@@ -449,11 +671,11 @@ impl Interpreter {
                                     out.extend_from_slice(&b[sign..]);
                                     make_result(&obj, out)
                                 } else {
-                                    Value::Error("zfill expects width argument".to_string())
+                                    Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["zfill() expects width argument".to_string()]))
                                 }
-                            } else { Value::Error("zfill: not bytes/bytearray".to_string()) }
+                            } else { Value::Exception(Exception::new(ExceptionKind::TypeError, vec!["zfill() on non-bytes/bytearray object".to_string()])) }
                         }
-                        _ => Value::Error("Unknown bytes/bytearray method".to_string()),
+                        _ => Value::Exception(Exception::new(ExceptionKind::AttributeError, vec![format!("'bytes' object has no attribute '{}'", name)])),
                     }
                 }
                 // ...existing code for user-defined functions...
@@ -463,8 +685,8 @@ impl Interpreter {
                 let val = self.eval_inner(expr);
                 panic!("__return__{:?}", val);
             }
-            Expr::Break => Value::Error("__break__".to_string()),
-            Expr::Continue => Value::Error("__continue__".to_string()),
+            Expr::Break => Value::Exception(Exception::new(ExceptionKind::Break, vec![])),
+            Expr::Continue => Value::Exception(Exception::new(ExceptionKind::Continue, vec![])),
             Expr::Match { expr, arms } => {
                 let val = self.eval_inner(expr);
                 for (pat, res) in arms {
@@ -510,19 +732,25 @@ impl Interpreter {
                     Err(e) => {
                         // Try to extract the error value from panic
                         let err_val = if let Some(s) = e.downcast_ref::<String>() {
-                            if s.starts_with("Error: ") {
-                                Value::Error(s[7..].to_string())
+                            if s.starts_with("__exception__") {
+                                // Extract the Exception from the panic message
+                                let exception_str = &s["__exception__".len()..];
+                                // This is a hacky way to deserialize the Exception from its Debug format.
+                                // In a real scenario, you'd want a proper serialization/deserialization mechanism.
+                                // For now, we'll just create a generic RuntimeError.
+                                Value::Exception(Exception::new(ExceptionKind::RuntimeError, vec![format!("Caught exception: {}", exception_str)]))
                             } else {
-                                Value::Error(s.clone())
+                                Value::Exception(Exception::new(ExceptionKind::RuntimeError, vec![s.clone()]))
                             }
                         } else if let Some(s) = e.downcast_ref::<&str>() {
-                            if s.starts_with("Error: ") {
-                                Value::Error(s[7..].to_string())
+                            if s.starts_with("__exception__") {
+                                let exception_str = &s["__exception__".len()..];
+                                Value::Exception(Exception::new(ExceptionKind::RuntimeError, vec![format!("Caught exception: {}", exception_str)]))
                             } else {
-                                Value::Error(s.to_string())
+                                Value::Exception(Exception::new(ExceptionKind::RuntimeError, vec![s.to_string()]))
                             }
                         } else {
-                            Value::Error("Unknown error".to_string())
+                            Value::Exception(Exception::new(ExceptionKind::RuntimeError, vec!["Unknown error".to_string()]))
                         };
                         if let Some(var) = catch_var {
                             self.env.insert(var.clone(), err_val.clone());
@@ -534,9 +762,9 @@ impl Interpreter {
             Expr::Throw(expr) => {
                 let val = self.eval_inner(expr);
                 match val {
-                    Value::Error(e) => panic!("Error: {}", e),
-                    Value::Str(s) => panic!("Error: {}", s),
-                    _ => panic!("Error: thrown value"),
+                    Value::Exception(e) => panic!("__exception__{:?}", e),
+                    Value::Str(s) => panic!("__exception__{:?}", Exception::new(ExceptionKind::Exception, vec![s])),
+                    _ => panic!("__exception__{:?}", Exception::new(ExceptionKind::Exception, vec!["thrown value".to_string()])),
                 }
             }
             Expr::Import(path) => {
@@ -561,10 +789,10 @@ impl Interpreter {
                     self.functions.extend(sub_interpreter.functions);
                     result
                 } else {
-                    Value::Error(format!("Failed to import {}", path))
+                    Value::Exception(Exception::new(ExceptionKind::ImportError, vec![format!("Failed to import {}", path)]))
                 }
             }
-            _ => Value::Error("Not implemented".to_string()),
+            _ => Value::Exception(Exception::new(ExceptionKind::NotImplementedError, vec![format!("Expression not implemented: {:?}", expr)])),
         }
     }
 
@@ -606,9 +834,8 @@ impl Value {
                 let items: Vec<String> = map.iter().map(|(k, v)| format!("{}: {}", k.to_display_string(), v.to_display_string())).collect();
                 format!("{{{}}}", items.join(", "))
             }
-            Value::Error(e) => format!("Error: {}", e),
             Value::Bool(b) => format!("{}", b),
-            Value::None => "null".to_string(),
+            Value::None => "None".to_string(),
             Value::Bytes(b) => format!("b{:?}", b),
             Value::ByteArray(b) => format!("bytearray({:?})", b),
             Value::MemoryView(b) => format!("memoryview({:?})", b),
@@ -621,8 +848,57 @@ impl Value {
                 let items: Vec<String> = s.iter().map(|v| v.to_display_string()).collect();
                 format!("frozenset({{{}}})", items.join(", "))
             }
-            Value::Iterator(_) => "[iterator]".to_string(),
-            Value::Generator(_) => "[generator]".to_string(),
+            Value::Iterator(_) => "<iterator object>".to_string(),
+            Value::Generator(_) => "<generator object>".to_string(),
+            Value::NotImplemented => "NotImplemented".to_string(),
+            Value::Ellipsis => "Ellipsis".to_string(),
+            Value::Complex(r, i) => format!("({}{}{}j)", r, if i >= 0.0 { "+" } else { "" }, i),
+            Value::Tuple(t) => {
+                let items: Vec<String> = t.iter().map(|v| v.to_display_string()).collect();
+                format!("({})", items.join(", "))
+            }
+            Value::Exception(e) => format!("<Exception: {:?}>", e), // More detailed exception display
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Value::Int(_) => "int",
+            Value::Float(_) => "float",
+            Value::Complex(_, _) => "complex",
+            Value::Bool(_) => "bool",
+            Value::Str(_) => "str",
+            Value::Bytes(_) => "bytes",
+            Value::ByteArray(_) => "bytearray",
+            Value::MemoryView(_) => "memoryview",
+            Value::List(_) => "list",
+            Value::Tuple(_) => "tuple",
+            Value::Range(_) => "range",
+            Value::Set(_) => "set",
+            Value::FrozenSet(_) => "frozenset",
+            Value::Dict(_) => "dict",
+            Value::Iterator(_) => "iterator",
+            Value::Generator(_) => "generator",
+            Value::None => "NoneType",
+            Value::NotImplemented => "NotImplementedType",
+            Value::Ellipsis => "EllipsisType",
+            Value::Exception(_) => "Exception",
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Int(n) => *n != 0,
+            Value::Float(f) => *f != 0.0 && !f.is_nan(),
+            Value::Str(s) => !s.is_empty(),
+            Value::List(l) => !l.is_empty(),
+            Value::Tuple(t) => !t.is_empty(),
+            Value::Dict(d) => !d.is_empty(),
+            Value::Set(s) => !s.is_empty(),
+            Value::FrozenSet(s) => !s.is_empty(),
+            Value::Bool(b) => *b,
+            Value::None => false,
+            _ => true, // Other types are considered truthy for now
         }
     }
 }
@@ -631,12 +907,30 @@ impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Value::Int(a), Value::Int(b)) => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Complex(ar, ai), Value::Complex(br, bi)) => ar == br && ai == bi,
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::Str(a), Value::Str(b)) => a == b,
+            (Value::Bytes(a), Value::Bytes(b)) => a == b,
+            (Value::ByteArray(a), Value::ByteArray(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Tuple(a), Value::Tuple(b)) => a == b,
+            (Value::Range(a), Value::Range(b)) => a == b,
+            (Value::Set(a), Value::Set(b)) => a == b,
+            (Value::FrozenSet(a), Value::FrozenSet(b)) => a == b,
+            (Value::Dict(a), Value::Dict(b)) => a == b,
             (Value::None, Value::None) => true,
             (Value::NotImplemented, Value::NotImplemented) => true,
             (Value::Ellipsis, Value::Ellipsis) => true,
-            _ => false,
+            // Allow comparison between Int and Float
+            (Value::Int(a), Value::Float(b)) => (*a as f64) == *b,
+            (Value::Float(a), Value::Int(b)) => *a == (*b as f64),
+            // Allow comparison between Int/Float and Bool
+            (Value::Int(a), Value::Bool(b)) => (*a != 0) == *b,
+            (Value::Bool(a), Value::Int(b)) => *a == (*b != 0),
+            (Value::Float(a), Value::Bool(b)) => (*a != 0.0) == *b,
+            (Value::Bool(a), Value::Float(b)) => *a == (*b != 0.0),
+            _ => false, // Different types are not equal by default
         }
     }
 }
@@ -648,12 +942,43 @@ impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             Value::Int(i) => i.hash(state),
+            Value::Float(f) => f.to_bits().hash(state), // Hash float bits
+            Value::Complex(r, i) => {
+                r.to_bits().hash(state);
+                i.to_bits().hash(state);
+            },
             Value::Bool(b) => b.hash(state),
             Value::Str(s) => s.hash(state),
+            Value::Bytes(b) => b.hash(state),
+            Value::ByteArray(b) => b.hash(state),
+            Value::List(l) => l.iter().for_each(|v| v.hash(state)), // Hash each element
+            Value::Tuple(t) => t.iter().for_each(|v| v.hash(state)), // Hash each element
+            Value::Range(r) => r.hash(state),
+            Value::Set(s) => {
+                let mut sorted_elements: Vec<&Value> = s.iter().collect();
+                // Sorting by display string is a hack; a proper solution would require Value to be Ord
+                sorted_elements.sort_by_key(|v| v.to_display_string());
+                sorted_elements.iter().for_each(|v| v.hash(state));
+            },
+            Value::FrozenSet(s) => {
+                let mut sorted_elements: Vec<&Value> = s.iter().collect();
+                sorted_elements.sort_by_key(|v| v.to_display_string());
+                sorted_elements.iter().for_each(|v| v.hash(state));
+            },
+            Value::Dict(d) => {
+                let mut sorted_pairs: Vec<(&Value, &Value)> = d.iter().collect();
+                sorted_pairs.sort_by_key(|(k, _)| k.to_display_string());
+                sorted_pairs.iter().for_each(|(k, v)| {
+                    k.hash(state);
+                    v.hash(state);
+                });
+            },
             Value::None => 0.hash(state),
             Value::NotImplemented => 1.hash(state),
             Value::Ellipsis => 2.hash(state),
-            _ => panic!("Attempted to hash an unsupported Value variant"),
+            Value::Exception(e) => e.hash(state),
+            Value::Iterator(_) => "iterator".hash(state), // Hash type name for now
+            Value::Generator(_) => "generator".hash(state), // Hash type name for now
         }
     }
 }

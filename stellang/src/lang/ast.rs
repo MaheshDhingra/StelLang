@@ -31,8 +31,12 @@ pub enum Expr {
         body: Box<Expr>,
     },
     FnCall {
-        name: String,
+        callable: Box<Expr>,
         args: Vec<Expr>,
+    },
+    GetAttr {
+        object: Box<Expr>,
+        name: String,
     },
     // === Added for arrays, maps, indexing, unary, and return ===
     ArrayLiteral(Vec<Expr>),
