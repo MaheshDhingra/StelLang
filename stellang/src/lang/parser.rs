@@ -862,10 +862,10 @@ mod tests {
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF {
+            if tok == Ok(Token::EOF) {
                 break;
             }
-            tokens.push(tok);
+            tokens.push(tok.expect("Failed to tokenize"));
         }
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap().unwrap();
@@ -882,10 +882,10 @@ mod tests {
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF {
+            if tok == Ok(Token::EOF) {
                 break;
             }
-            tokens.push(tok);
+            tokens.push(tok.expect("Failed to tokenize"));
         }
         println!("TOKENS: {:?}", tokens);
         let mut parser = Parser::new(tokens.clone());
@@ -914,10 +914,10 @@ mod tests {
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF {
+            if tok == Ok(Token::EOF) {
                 break;
             }
-            tokens.push(tok);
+            tokens.push(tok.expect("Failed to tokenize"));
         }
         println!("TOKENS: {:?}", tokens);
         let mut parser = Parser::new(tokens.clone());
@@ -948,10 +948,10 @@ mod tests {
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF {
+            if tok == Ok(Token::EOF) {
                 break;
             }
-            tokens.push(tok);
+            tokens.push(tok.expect("Failed to tokenize"));
         }
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap().unwrap();
@@ -993,10 +993,10 @@ mod tests {
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF {
+            if tok == Ok(Token::EOF) {
                 break;
             }
-            tokens.push(tok);
+            tokens.push(tok.expect("Failed to tokenize"));
         }
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap().unwrap();
@@ -1024,10 +1024,10 @@ mod tests {
         let mut tokens = Vec::new();
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF {
+            if tok == Ok(Token::EOF) {
                 break;
             }
-            tokens.push(tok);
+            tokens.push(tok.expect("Failed to tokenize"));
         }
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap().unwrap();

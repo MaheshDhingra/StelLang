@@ -65,6 +65,8 @@ pub enum ExceptionKind {
     PermissionError,
     ProcessLookupError,
     TimeoutError,
+    Break,
+    Continue,
     // ...add more as needed
 }
 
