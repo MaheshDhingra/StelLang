@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hex = "0.4"
 
 [[bin]]
 name = "stellang"
@@ -16,3 +17,7 @@ path = "src/bin/pico.rs"
 [[test]]
 name = "operator_tests"
 path = "tests/operator_tests.rs"
+
+[[test]]
+name = "builtin_method_tests"
+path = "tests/builtin_method_tests.rs"
