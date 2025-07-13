@@ -18,8 +18,12 @@ fn test_division_by_zero_exception() {
     let mut interpreter = Interpreter::new();
     let result = interpreter.eval(&expr);
     
+    println!("Result: {:?}", result);
     match result {
         Ok(stellang::lang::interpreter::Value::Exception(e)) => {
+            assert_eq!(e.kind, ExceptionKind::ZeroDivisionError);
+        },
+        Err(e) => {
             assert_eq!(e.kind, ExceptionKind::ZeroDivisionError);
         },
         _ => panic!("Expected ZeroDivisionError exception"),

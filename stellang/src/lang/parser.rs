@@ -96,7 +96,7 @@ impl Parser {
             Token::Return => self.parse_return(),
             Token::Break => { self.advance(); Ok(Some(Expr::Break)) },
             Token::Continue => { self.advance(); Ok(Some(Expr::Continue)) },
-            _ => self.parse_logical_or().map(Some),
+            _ => self.parse_assignment().map(Some),
         }
     }
 
@@ -373,6 +373,28 @@ impl Parser {
             params,
             body: Box::new(body),
         }))
+    }
+
+    fn parse_assignment(&mut self) -> Result<Expr, Exception> {
+        let mut node = self.parse_logical_or()?;
+        if let Token::Assign = self.peek() {
+            // Check if the left side is a valid assignment target
+            match &node {
+                Expr::Ident(_) | Expr::Index { .. } => {
+                    self.advance(); // consume '='
+                    let value = self.parse_assignment()?;
+                    node = Expr::Assign {
+                        name: match &node {
+                            Expr::Ident(name) => name.clone(),
+                            _ => return Err(Exception::new(ExceptionKind::SyntaxError, vec!["Invalid assignment target".to_string()])),
+                        },
+                        expr: Box::new(value),
+                    };
+                }
+                _ => return Err(Exception::new(ExceptionKind::SyntaxError, vec!["Invalid assignment target".to_string()])),
+            }
+        }
+        Ok(node)
     }
 
     fn parse_logical_or(&mut self) -> Result<Expr, Exception> {
