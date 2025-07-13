@@ -1,55 +1,67 @@
 use std::io::{self, Write};
 use std::fs;
-use stellang::lang::lexer::Lexer;
-use stellang::lang::parser::Parser;
-use stellang::lang::interpreter::Interpreter;
+use stellang::lang::{lexer::Lexer, parser::Parser, interpreter::Interpreter};
 use stellang::lang::lexer::Token;
 
 fn main() {
-    println!("Welcome to StelLang!");
-    let mut interpreter = Interpreter::new();
-    // Run src/main.stl if it exists
-    if let Ok(source) = fs::read_to_string("src/main.stl") {
-        let mut lexer = Lexer::new(&source);
+    let args: Vec<String> = std::env::args().collect();
+    
+    if args.len() > 1 {
+        // File mode
+        let filename = &args[1];
+        let content = std::fs::read_to_string(filename).expect("Failed to read file");
+        
+        let mut lexer = Lexer::new(&content);
         let mut tokens = Vec::new();
+        
         loop {
             let tok = lexer.next_token();
-            if tok == Token::EOF { break; }
-            tokens.push(tok);
+            if tok == Ok(Token::EOF) { break; }
+            tokens.push(tok.expect("Lexer error"));
         }
         let mut parser = Parser::new(tokens);
-        if let Some(ast) = parser.parse() {
-            let result = interpreter.eval(&ast);
-            println!("[main.stl] = {:?}", result);
+        if let Ok(Some(ast)) = parser.parse() {
+            let mut interpreter = Interpreter::new();
+            match interpreter.eval(&ast) {
+                Ok(result) => println!("{}", result.to_display_string()),
+                Err(e) => eprintln!("Error: {:?}", e),
+            }
         } else {
-            println!("[main.stl] Parse error");
+            eprintln!("Failed to parse file");
         }
-    }
-    // Start REPL
-    loop {
-        print!("> ");
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            println!("Error reading input");
-            continue;
-        }
-        if input.trim() == "exit" {
-            break;
-        }
-        let mut lexer = Lexer::new(&input);
-        let mut tokens = Vec::new();
+    } else {
+        // REPL mode
+        println!("StelLang REPL (Press Ctrl+C to exit)");
+        
         loop {
-            let tok = lexer.next_token();
-            if tok == Token::EOF { break; }
-            tokens.push(tok);
-        }
-        let mut parser = Parser::new(tokens);
-        if let Some(expr) = parser.parse() {
-            let result = interpreter.eval(&expr);
-            println!("= {:?}", result);
-        } else {
-            println!("Parse error");
+            print!(">>> ");
+            std::io::stdout().flush().unwrap();
+            
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).expect("Failed to read input");
+            
+            if input.trim().is_empty() {
+                continue;
+            }
+            
+            let mut lexer = Lexer::new(&input);
+            let mut tokens = Vec::new();
+            
+            loop {
+                let tok = lexer.next_token();
+                if tok == Ok(Token::EOF) { break; }
+                tokens.push(tok.expect("Lexer error"));
+            }
+            let mut parser = Parser::new(tokens);
+            if let Ok(Some(expr)) = parser.parse() {
+                let mut interpreter = Interpreter::new();
+                match interpreter.eval(&expr) {
+                    Ok(result) => println!("{}", result.to_display_string()),
+                    Err(e) => eprintln!("Error: {:?}", e),
+                }
+            } else {
+                eprintln!("Failed to parse input");
+            }
         }
     }
 }

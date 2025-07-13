@@ -470,11 +470,11 @@ fn cmd_test() {
             let mut tokens = Vec::new();
             loop {
                 let tok = lexer.next_token();
-                if tok == Token::EOF { break; }
-                tokens.push(tok);
+                if tok == Ok(Token::EOF) { break; }
+                tokens.push(tok.expect("Lexer error"));
             }
             let mut parser = Parser::new(tokens);
-            if let Some(ast) = parser.parse() {
+            if let Ok(Some(ast)) = parser.parse() {
                 let mut interpreter = Interpreter::new();
                 let result = interpreter.eval(&ast);
                 println!("[tests/main.stl] = {:?}", result);

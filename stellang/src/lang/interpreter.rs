@@ -499,6 +499,13 @@ impl Interpreter {
                 self.functions.insert(name.clone(), (params.clone(), *body.clone()));
                 Ok(Value::None)
             }
+            Expr::GetAttr { object, name } => {
+                let obj = self.eval_inner(object)?;
+                Ok(Value::BuiltinMethod {
+                    object: Box::new(obj),
+                    method_name: name.clone(),
+                })
+            }
             Expr::FnCall { callable, args } => {
                 // Evaluate the callable first
                 let callable_val = self.eval_inner(callable)?;
@@ -541,20 +548,32 @@ impl Interpreter {
                     match method_name.as_str() {
                         // String methods
                         "str_len" => {
-                            if let Value::Str(s) = *object { Ok(Value::Int(s.len() as i64)) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Int(s.len() as i64)); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
                         },
                         "str_upper" => {
-                            if let Value::Str(s) = *object { Ok(Value::Str(s.to_uppercase())) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Str(s.to_uppercase())); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
                         },
                         "str_lower" => {
-                            if let Value::Str(s) = *object { Ok(Value::Str(s.to_lowercase())) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Str(s.to_lowercase())); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
                         },
                         "str_strip" => {
-                            if let Value::Str(s) = *object { Ok(Value::Str(s.trim().to_string())) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Str(s.trim().to_string())); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
                         },
                         "str_split" => {
                             if let Value::Str(s) = *object {
@@ -568,19 +587,23 @@ impl Interpreter {
                                     " "
                                 };
                                 let parts: Vec<Value> = s.split(sep).map(|part| Value::Str(part.to_string())).collect();
-                                Ok(Value::List(parts))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                                return Ok(Value::List(parts));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_join" => {
                             if let Value::Str(sep) = *object {
                                 if let Some(Value::List(items)) = evaluated_args.get(0) {
                                     let strings: Vec<String> = items.iter().map(|item| item.to_display_string()).collect();
-                                    Ok(Value::Str(strings.join(&sep)))
+                                    return Ok(Value::Str(strings.join(&sep)));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["Join expects a list argument".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Join expects a list argument".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_replace" => {
                             if let Value::Str(s) = *object {
                                 if evaluated_args.len() >= 2 {
@@ -602,76 +625,104 @@ impl Interpreter {
                                     } else {
                                         s.replacen(old, new, count)
                                     };
-                                    Ok(Value::Str(result))
+                                    return Ok(Value::Str(result));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["Replace expects at least 2 arguments".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Replace expects at least 2 arguments".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_find" => {
                             if let Value::Str(s) = *object {
                                 if let Some(Value::Str(sub)) = evaluated_args.get(0) {
                                     match s.find(sub) {
-                                        Some(pos) => Ok(Value::Int(pos as i64)),
-                                        None => Ok(Value::Int(-1))
+                                        Some(pos) => return Ok(Value::Int(pos as i64)),
+                                        None => return Ok(Value::Int(-1))
                                     }
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["Find expects a string argument".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Find expects a string argument".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_count" => {
                             if let Value::Str(s) = *object {
                                 if let Some(Value::Str(sub)) = evaluated_args.get(0) {
                                     let count = s.matches(sub).count();
-                                    Ok(Value::Int(count as i64))
+                                    return Ok(Value::Int(count as i64));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["Count expects a string argument".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Count expects a string argument".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_startswith" => {
                             if let Value::Str(s) = *object {
                                 if let Some(Value::Str(prefix)) = evaluated_args.get(0) {
-                                    Ok(Value::Bool(s.starts_with(prefix)))
+                                    return Ok(Value::Bool(s.starts_with(prefix)));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["Startswith expects a string argument".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Startswith expects a string argument".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_endswith" => {
                             if let Value::Str(s) = *object {
                                 if let Some(Value::Str(suffix)) = evaluated_args.get(0) {
-                                    Ok(Value::Bool(s.ends_with(suffix)))
+                                    return Ok(Value::Bool(s.ends_with(suffix)));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["Endswith expects a string argument".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Endswith expects a string argument".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_isalnum" => {
-                            if let Value::Str(s) = *object { Ok(Value::Bool(s.chars().all(|c| c.is_alphanumeric()))) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Bool(s.chars().all(|c| c.is_alphanumeric()))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_isalpha" => {
-                            if let Value::Str(s) = *object { Ok(Value::Bool(s.chars().all(|c| c.is_alphabetic()))) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Bool(s.chars().all(|c| c.is_alphabetic()))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_isdigit" => {
-                            if let Value::Str(s) = *object { Ok(Value::Bool(s.chars().all(|c| c.is_ascii_digit()))) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Bool(s.chars().all(|c| c.is_ascii_digit()))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_islower" => {
-                            if let Value::Str(s) = *object { Ok(Value::Bool(s.chars().all(|c| c.is_lowercase()))) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Bool(s.chars().all(|c| c.is_lowercase()))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_isupper" => {
-                            if let Value::Str(s) = *object { Ok(Value::Bool(s.chars().all(|c| c.is_uppercase()))) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Bool(s.chars().all(|c| c.is_uppercase()))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_isspace" => {
-                            if let Value::Str(s) = *object { Ok(Value::Bool(s.chars().all(|c| c.is_whitespace()))) }
-                            else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
-                        }
+                            if let Value::Str(s) = *object { 
+                                return Ok(Value::Bool(s.chars().all(|c| c.is_whitespace()))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
+                        },
                         "str_istitle" => {
                             if let Value::Str(s) = *object {
                                 let mut prev_is_space = true;
@@ -687,8 +738,10 @@ impl Interpreter {
                                         prev_is_space = c.is_whitespace();
                                     }
                                 }
-                                Ok(Value::Bool(is_title))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])) }
+                                return Ok(Value::Bool(is_title));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected string object".to_string()])); 
+                            }
                         },
                         // List methods
                         "list_append" => {
@@ -697,19 +750,20 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["append() takes exactly one argument".to_string()]));
                                 }
                                 l.push(evaluated_args[0].clone());
-                                // Update the environment with the modified list if it was a variable
-                                // This is a simplification; proper object mutation would be more complex
-                                // For now, we return None as Python list.append() does
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_pop" => {
                             if let Value::List(mut l) = *object {
                                 if !evaluated_args.is_empty() {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["pop() takes no arguments".to_string()]));
                                 }
-                                l.pop().ok_or_else(|| Exception::new(ExceptionKind::IndexError, vec!["pop from empty list".to_string()]))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                                return l.pop().ok_or_else(|| Exception::new(ExceptionKind::IndexError, vec!["pop from empty list".to_string()]));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_extend" => {
                             if let Value::List(mut l) = *object {
@@ -718,153 +772,161 @@ impl Interpreter {
                                 }
                                 if let Value::List(other) = &evaluated_args[0] {
                                     l.extend(other.clone());
-                                    Ok(Value::None)
+                                    return Ok(Value::None);
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["extend() argument must be a list".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["extend() argument must be a list".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_insert" => {
                             if let Value::List(mut l) = *object {
                                 if evaluated_args.len() != 2 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["insert() takes exactly two arguments".to_string()]));
                                 }
-                                let index = if let Value::Int(i) = &evaluated_args[0] { *i as usize } else { return Err(Exception::new(ExceptionKind::TypeError, vec!["insert() index must be an integer".to_string()])); };
-                                let value = evaluated_args[1].clone();
-                                if index > l.len() {
-                                    l.push(value); // Python appends if index is too large
+                                if let Value::Int(index) = &evaluated_args[0] {
+                                    let index = if *index < 0 { 
+                                        (l.len() as i64 + *index).max(0) as usize 
+                                    } else { 
+                                        (*index as usize).min(l.len()) 
+                                    };
+                                    l.insert(index, evaluated_args[1].clone());
+                                    return Ok(Value::None);
                                 } else {
-                                    l.insert(index, value);
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["insert() index must be an integer".to_string()]));
                                 }
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_remove" => {
                             if let Value::List(mut l) = *object {
                                 if evaluated_args.len() != 1 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["remove() takes exactly one argument".to_string()]));
                                 }
-                                let value_to_remove = &evaluated_args[0];
-                                if let Some(pos) = l.iter().position(|x| x == value_to_remove) {
+                                if let Some(pos) = l.iter().position(|x| x == &evaluated_args[0]) {
                                     l.remove(pos);
-                                    Ok(Value::None)
+                                    return Ok(Value::None);
                                 } else {
-                                    Err(Exception::new(ExceptionKind::ValueError, vec!["list.remove(x): x not in list".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::ValueError, vec!["list.remove(x): x not in list".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
+                        },
+                        "list_clear" => {
+                            if let Value::List(mut l) = *object {
+                                l.clear();
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
+                        },
+                        "list_copy" => {
+                            if let Value::List(l) = *object {
+                                return Ok(Value::List(l.clone()));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_index" => {
                             if let Value::List(l) = *object {
                                 if evaluated_args.len() != 1 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["index() takes exactly one argument".to_string()]));
                                 }
-                                let value_to_find = &evaluated_args[0];
-                                if let Some(pos) = l.iter().position(|x| x == value_to_find) {
-                                    Ok(Value::Int(pos as i64))
+                                if let Some(pos) = l.iter().position(|x| x == &evaluated_args[0]) {
+                                    return Ok(Value::Int(pos as i64));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::ValueError, vec!["'{}' is not in list".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::ValueError, vec!["list.index(x): x not in list".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_count" => {
                             if let Value::List(l) = *object {
                                 if evaluated_args.len() != 1 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["count() takes exactly one argument".to_string()]));
                                 }
-                                let value_to_count = &evaluated_args[0];
-                                Ok(Value::Int(l.iter().filter(|x| *x == value_to_count).count() as i64))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
-                        },
-                        "list_sort" => {
-                            if let Value::List(mut l) = *object {
-                                // This is a simplified sort. For full Python compatibility,
-                                // it would need 'key' and 'reverse' arguments, and a way to compare arbitrary Value types.
-                                // For now, only works if elements are comparable (e.g., Int, Float, Str)
-                                let mut sortable = true;
-                                for i in 0..l.len() {
-                                    for j in (i + 1)..l.len() {
-                                        if !l[i].eq(&l[j]) { // Check if elements are comparable
-                                            // This is a very basic check, a proper comparison would be needed
-                                        }
-                                    }
-                                }
-                                if sortable {
-                                    // Requires Value to implement Ord, which it currently doesn't fully.
-                                    // For now, this will panic if elements are not naturally sortable.
-                                    // A proper solution would involve implementing Ord for Value or a custom comparator.
-                                    // l.sort(); // This line would require Value to be Ord
-                                    Err(Exception::new(ExceptionKind::NotImplementedError, vec!["list.sort() for arbitrary types not yet implemented".to_string()]))
-                                } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["'<' not supported between instances of different types".to_string()]))
-                                }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()]))}
+                                let count = l.iter().filter(|x| *x == &evaluated_args[0]).count();
+                                return Ok(Value::Int(count as i64));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         "list_reverse" => {
                             if let Value::List(mut l) = *object {
                                 l.reverse();
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
-                        "list_clear" => {
+                        "list_sort" => {
                             if let Value::List(mut l) = *object {
-                                l.clear();
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
-                        },
-                        "list_copy" => {
-                            if let Value::List(l) = *object {
-                                Ok(Value::List(l.clone()))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])) }
+                                l.sort_by(|a, b| a.to_display_string().cmp(&b.to_display_string()));
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected list object".to_string()])); 
+                            }
                         },
                         // Dict methods
                         "dict_keys" => {
                             if let Value::Dict(d) = *object {
-                                Ok(Value::List(d.keys().cloned().collect()))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                                return Ok(Value::List(d.keys().cloned().collect()));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_values" => {
                             if let Value::Dict(d) = *object {
-                                Ok(Value::List(d.values().cloned().collect()))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                                return Ok(Value::List(d.values().cloned().collect()));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_items" => {
                             if let Value::Dict(d) = *object {
                                 let items: Vec<Value> = d.iter().map(|(k, v)| Value::Tuple(vec![k.clone(), v.clone()])).collect();
-                                Ok(Value::List(items))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                                return Ok(Value::List(items));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_get" => {
                             if let Value::Dict(d) = *object {
-                                if evaluated_args.is_empty() || evaluated_args.len() > 2 {
+                                if evaluated_args.len() < 1 || evaluated_args.len() > 2 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["get() takes 1 or 2 arguments".to_string()]));
                                 }
                                 let key = &evaluated_args[0];
-                                Ok(d.get(key).cloned().unwrap_or_else(|| {
-                                    if evaluated_args.len() == 2 {
-                                        evaluated_args[1].clone()
-                                    } else {
-                                        Value::None
-                                    }
-                                }))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                                if let Some(value) = d.get(key) {
+                                    return Ok(value.clone());
+                                } else if evaluated_args.len() == 2 {
+                                    return Ok(evaluated_args[1].clone());
+                                } else {
+                                    return Ok(Value::None);
+                                }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_pop" => {
                             if let Value::Dict(mut d) = *object {
-                                if evaluated_args.is_empty() || evaluated_args.len() > 2 {
+                                if evaluated_args.len() < 1 || evaluated_args.len() > 2 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["pop() takes 1 or 2 arguments".to_string()]));
                                 }
                                 let key = &evaluated_args[0];
-                                match d.remove(key) {
-                                    Some(value) => Ok(value),
-                                    None => {
-                                        if evaluated_args.len() == 2 {
-                                            Ok(evaluated_args[1].clone())
-                                        } else {
-                                            Err(Exception::new(ExceptionKind::KeyError, vec![key.to_display_string()]))
-                                        }
-                                    }
+                                if let Some(value) = d.remove(key) {
+                                    return Ok(value);
+                                } else if evaluated_args.len() == 2 {
+                                    return Ok(evaluated_args[1].clone());
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::KeyError, vec![key.to_display_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_update" => {
                             if let Value::Dict(mut d) = *object {
@@ -873,22 +935,28 @@ impl Interpreter {
                                 }
                                 if let Value::Dict(other) = &evaluated_args[0] {
                                     d.extend(other.clone());
-                                    Ok(Value::None)
+                                    return Ok(Value::None);
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["update() argument must be a dictionary".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["update() argument must be a dictionary".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_clear" => {
                             if let Value::Dict(mut d) = *object {
                                 d.clear();
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         "dict_copy" => {
                             if let Value::Dict(d) = *object {
-                                Ok(Value::Dict(d.clone()))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])) }
+                                return Ok(Value::Dict(d.clone()));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected dict object".to_string()])); 
+                            }
                         },
                         // Set methods
                         "set_add" => {
@@ -897,8 +965,10 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["add() takes exactly one argument".to_string()]));
                                 }
                                 s.insert(evaluated_args[0].clone());
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_remove" => {
                             if let Value::Set(mut s) = *object {
@@ -906,11 +976,13 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["remove() takes exactly one argument".to_string()]));
                                 }
                                 if s.remove(&evaluated_args[0]) {
-                                    Ok(Value::None)
+                                    return Ok(Value::None);
                                 } else {
-                                    Err(Exception::new(ExceptionKind::KeyError, vec![evaluated_args[0].to_display_string()]))
+                                    return Err(Exception::new(ExceptionKind::KeyError, vec![evaluated_args[0].to_display_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_discard" => {
                             if let Value::Set(mut s) = *object {
@@ -918,22 +990,28 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["discard() takes exactly one argument".to_string()]));
                                 }
                                 s.remove(&evaluated_args[0]);
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_pop" => {
                             if let Value::Set(mut s) = *object {
                                 if !evaluated_args.is_empty() {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["pop() takes no arguments".to_string()]));
                                 }
-                                s.drain().next().ok_or_else(|| Exception::new(ExceptionKind::KeyError, vec!["pop from an empty set".to_string()]))
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                                return s.drain().next().ok_or_else(|| Exception::new(ExceptionKind::KeyError, vec!["pop from an empty set".to_string()]));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_clear" => {
                             if let Value::Set(mut s) = *object {
                                 s.clear();
-                                Ok(Value::None)
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                                return Ok(Value::None);
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_union" => {
                             if let Value::Set(s) = *object {
@@ -941,11 +1019,13 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["union() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::Set(other) = &evaluated_args[0] {
-                                    Ok(Value::Set(s.union(other).cloned().collect()))
+                                    return Ok(Value::Set(s.union(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["union() argument must be a set".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["union() argument must be a set".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_intersection" => {
                             if let Value::Set(s) = *object {
@@ -953,11 +1033,13 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["intersection() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::Set(other) = &evaluated_args[0] {
-                                    Ok(Value::Set(s.intersection(other).cloned().collect()))
+                                    return Ok(Value::Set(s.intersection(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["intersection() argument must be a set".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["intersection() argument must be a set".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_difference" => {
                             if let Value::Set(s) = *object {
@@ -965,11 +1047,13 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["difference() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::Set(other) = &evaluated_args[0] {
-                                    Ok(Value::Set(s.difference(other).cloned().collect()))
+                                    return Ok(Value::Set(s.difference(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["difference() argument must be a set".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["difference() argument must be a set".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
                         "set_symmetric_difference" => {
                             if let Value::Set(s) = *object {
@@ -977,87 +1061,91 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["symmetric_difference() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::Set(other) = &evaluated_args[0] {
-                                    Ok(Value::Set(s.symmetric_difference(other).cloned().collect()))
+                                    return Ok(Value::Set(s.symmetric_difference(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["symmetric_difference() argument must be a set".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["symmetric_difference() argument must be a set".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
                         },
-                                                    "set_issubset" => {
-                                if let Value::Set(s) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::Set(other) = &evaluated_args[0] {
-                                        return Ok(Value::Bool(s.is_subset(other)));
-                                    } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() argument must be a set".to_string()]));
-                                    }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                        "set_issubset" => {
+                            if let Value::Set(s) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() takes exactly one argument".to_string()]));
                                 }
-                            },
-                                                    "set_issuperset" => {
-                                if let Value::Set(s) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::Set(other) = &evaluated_args[0] {
-                                        return Ok(Value::Bool(s.is_superset(other)));
-                                    } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() argument must be a set".to_string()]));
-                                    }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                                if let Value::Set(other) = &evaluated_args[0] {
+                                    return Ok(Value::Bool(s.is_subset(other)));
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() argument must be a set".to_string()]));
                                 }
-                            },
-                                                    "set_isdisjoint" => {
-                                if let Value::Set(s) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::Set(other) = &evaluated_args[0] {
-                                        return Ok(Value::Bool(s.is_disjoint(other)));
-                                    } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() argument must be a set".to_string()]));
-                                    }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
+                        },
+                        "set_issuperset" => {
+                            if let Value::Set(s) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() takes exactly one argument".to_string()]));
                                 }
-                            },
-                                                    "set_copy" => {
-                                if let Value::Set(s) = *object {
-                                    return Ok(Value::Set(s.clone()));
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                                if let Value::Set(other) = &evaluated_args[0] {
+                                    return Ok(Value::Bool(s.is_superset(other)));
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() argument must be a set".to_string()]));
                                 }
-                            },
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
+                        },
+                        "set_isdisjoint" => {
+                            if let Value::Set(s) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() takes exactly one argument".to_string()]));
+                                }
+                                if let Value::Set(other) = &evaluated_args[0] {
+                                    return Ok(Value::Bool(s.is_disjoint(other)));
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() argument must be a set".to_string()]));
+                                }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
+                        },
+                        "set_copy" => {
+                            if let Value::Set(s) = *object {
+                                return Ok(Value::Set(s.clone()));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected set object".to_string()])); 
+                            }
+                        },
                         // FrozenSet methods (similar to set, but immutable)
-                                                    "frozenset_union" => {
-                                if let Value::FrozenSet(s) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["union() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                        return Ok(Value::FrozenSet(s.union(other).cloned().collect()));
-                                    } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["union() argument must be a frozenset".to_string()]));
-                                    }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                        "frozenset_union" => {
+                            if let Value::FrozenSet(s) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["union() takes exactly one argument".to_string()]));
                                 }
-                            },
+                                if let Value::FrozenSet(other) = &evaluated_args[0] {
+                                    return Ok(Value::FrozenSet(s.union(other).cloned().collect()));
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["union() argument must be a frozenset".to_string()]));
+                                }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
+                        },
                         "frozenset_intersection" => {
                             if let Value::FrozenSet(s) = *object {
                                 if evaluated_args.len() != 1 {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["intersection() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                    Ok(Value::FrozenSet(s.intersection(other).cloned().collect()))
+                                    return Ok(Value::FrozenSet(s.intersection(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["intersection() argument must be a frozenset".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["intersection() argument must be a frozenset".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
                         },
                         "frozenset_difference" => {
                             if let Value::FrozenSet(s) = *object {
@@ -1065,11 +1153,13 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["difference() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                    Ok(Value::FrozenSet(s.difference(other).cloned().collect()))
+                                    return Ok(Value::FrozenSet(s.difference(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["difference() argument must be a frozenset".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["difference() argument must be a frozenset".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
                         },
                         "frozenset_symmetric_difference" => {
                             if let Value::FrozenSet(s) = *object {
@@ -1077,11 +1167,13 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["symmetric_difference() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                    Ok(Value::FrozenSet(s.symmetric_difference(other).cloned().collect()))
+                                    return Ok(Value::FrozenSet(s.symmetric_difference(other).cloned().collect()));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["symmetric_difference() argument must be a frozenset".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["symmetric_difference() argument must be a frozenset".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
                         },
                         "frozenset_issubset" => {
                             if let Value::FrozenSet(s) = *object {
@@ -1089,62 +1181,64 @@ impl Interpreter {
                                     return Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() takes exactly one argument".to_string()]));
                                 }
                                 if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                    Ok(Value::Bool(s.is_subset(other)))
+                                    return Ok(Value::Bool(s.is_subset(other)));
                                 } else {
-                                    Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() argument must be a frozenset".to_string()]))
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issubset() argument must be a frozenset".to_string()]));
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
                         },
-                                                    "frozenset_issuperset" => {
-                                if let Value::FrozenSet(s) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                        return Ok(Value::Bool(s.is_superset(other)));
-                                    } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() argument must be a frozenset".to_string()]));
-                                    }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                        "frozenset_issuperset" => {
+                            if let Value::FrozenSet(s) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() takes exactly one argument".to_string()]));
                                 }
-                            },
-                                                    "frozenset_isdisjoint" => {
-                                if let Value::FrozenSet(s) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::FrozenSet(other) = &evaluated_args[0] {
-                                        return Ok(Value::Bool(s.is_disjoint(other)));
-                                    } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() argument must be a frozenset".to_string()]));
-                                    }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                                if let Value::FrozenSet(other) = &evaluated_args[0] {
+                                    return Ok(Value::Bool(s.is_superset(other)));
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["issuperset() argument must be a frozenset".to_string()]));
                                 }
-                            },
-                                                    "frozenset_copy" => {
-                                if let Value::FrozenSet(s) = *object {
-                                    return Ok(Value::FrozenSet(s.clone()));
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
+                        },
+                        "frozenset_isdisjoint" => {
+                            if let Value::FrozenSet(s) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() takes exactly one argument".to_string()]));
                                 }
-                            },
+                                if let Value::FrozenSet(other) = &evaluated_args[0] {
+                                    return Ok(Value::Bool(s.is_disjoint(other)));
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["isdisjoint() argument must be a frozenset".to_string()]));
+                                }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
+                        },
+                        "frozenset_copy" => {
+                            if let Value::FrozenSet(s) = *object {
+                                return Ok(Value::FrozenSet(s.clone()));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected frozenset object".to_string()])); 
+                            }
+                        },
                         // Bytes methods
-                                                    "bytes_len" => {
-                                if let Value::Bytes(b) = *object { 
-                                    return Ok(Value::Int(b.len() as i64)); 
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytes object".to_string()])); 
-                                }
-                            },
-                                                    "bytes_hex" => {
-                                if let Value::Bytes(b) = *object { 
-                                    return Ok(Value::Str(hex::encode(b))); 
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytes object".to_string()])); 
-                                }
-                            },
+                        "bytes_len" => {
+                            if let Value::Bytes(b) = *object { 
+                                return Ok(Value::Int(b.len() as i64)); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytes object".to_string()])); 
+                            }
+                        },
+                        "bytes_hex" => {
+                            if let Value::Bytes(b) = *object { 
+                                return Ok(Value::Str(hex::encode(b))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytes object".to_string()])); 
+                            }
+                        },
                         "bytes_decode" => {
                             if let Value::Bytes(b) = *object {
                                 let encoding = if evaluated_args.is_empty() {
@@ -1156,30 +1250,32 @@ impl Interpreter {
                                 };
                                 match encoding.as_str() {
                                     "utf-8" => {
-                                        String::from_utf8(b).map_or_else(
+                                        return String::from_utf8(b).map_or_else(
                                             |e| Err(Exception::new(ExceptionKind::UnicodeDecodeError, vec![format!("'utf-8' codec can't decode byte: {}", e)])),
                                             |s| Ok(Value::Str(s))
-                                        )
+                                        );
                                     },
-                                    _ => Err(Exception::new(ExceptionKind::Exception, vec![format!("unknown encoding: {}", encoding)])),
+                                    _ => return Err(Exception::new(ExceptionKind::Exception, vec![format!("unknown encoding: {}", encoding)])),
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytes object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytes object".to_string()])); 
+                            }
                         },
                         // ByteArray methods
-                                                    "bytearray_len" => {
-                                if let Value::ByteArray(b) = *object { 
-                                    return Ok(Value::Int(b.len() as i64)); 
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
-                                }
-                            },
-                                                    "bytearray_hex" => {
-                                if let Value::ByteArray(b) = *object { 
-                                    return Ok(Value::Str(hex::encode(b))); 
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
-                                }
-                            },
+                        "bytearray_len" => {
+                            if let Value::ByteArray(b) = *object { 
+                                return Ok(Value::Int(b.len() as i64)); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                            }
+                        },
+                        "bytearray_hex" => {
+                            if let Value::ByteArray(b) = *object { 
+                                return Ok(Value::Str(hex::encode(b))); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                            }
+                        },
                         "bytearray_decode" => {
                             if let Value::ByteArray(b) = *object {
                                 let encoding = if evaluated_args.is_empty() {
@@ -1191,48 +1287,50 @@ impl Interpreter {
                                 };
                                 match encoding.as_str() {
                                     "utf-8" => {
-                                        String::from_utf8(b).map_or_else(
+                                        return String::from_utf8(b).map_or_else(
                                             |e| Err(Exception::new(ExceptionKind::UnicodeDecodeError, vec![format!("'utf-8' codec can't decode byte: {}", e)])),
                                             |s| Ok(Value::Str(s))
-                                        )
+                                        );
                                     },
-                                    _ => Err(Exception::new(ExceptionKind::Exception, vec![format!("unknown encoding: {}", encoding)])),
+                                    _ => return Err(Exception::new(ExceptionKind::Exception, vec![format!("unknown encoding: {}", encoding)])),
                                 }
-                            } else { Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])) }
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                            }
                         },
-                                                    "bytearray_append" => {
-                                if let Value::ByteArray(mut b) = *object {
-                                    if evaluated_args.len() != 1 {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["append() takes exactly one argument".to_string()]));
-                                    }
-                                    if let Value::Int(byte_val) = &evaluated_args[0] {
-                                        if *byte_val >= 0 && *byte_val <= 255 {
-                                            b.push(*byte_val as u8);
-                                            return Ok(Value::None);
-                                        } else {
-                                            return Err(Exception::new(ExceptionKind::ValueError, vec!["byte must be in range(0, 256)".to_string()]));
-                                        }
+                        "bytearray_append" => {
+                            if let Value::ByteArray(mut b) = *object {
+                                if evaluated_args.len() != 1 {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["append() takes exactly one argument".to_string()]));
+                                }
+                                if let Value::Int(byte_val) = &evaluated_args[0] {
+                                    if *byte_val >= 0 && *byte_val <= 255 {
+                                        b.push(*byte_val as u8);
+                                        return Ok(Value::None);
                                     } else {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["an integer is required (got type {})".to_string()]));
+                                        return Err(Exception::new(ExceptionKind::ValueError, vec!["byte must be in range(0, 256)".to_string()]));
                                     }
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                                } else {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["an integer is required (got type {})".to_string()]));
                                 }
-                            },
-                                                    "bytearray_pop" => {
-                                if let Value::ByteArray(mut b) = *object {
-                                    if !evaluated_args.is_empty() {
-                                        return Err(Exception::new(ExceptionKind::TypeError, vec!["pop() takes no arguments".to_string()]));
-                                    }
-                                    return b.pop().map_or(Err(Exception::new(ExceptionKind::IndexError, vec!["pop from empty bytearray".to_string()])), |byte| Ok(Value::Int(byte as i64)));
-                                } else { 
-                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                            }
+                        },
+                        "bytearray_pop" => {
+                            if let Value::ByteArray(mut b) = *object {
+                                if !evaluated_args.is_empty() {
+                                    return Err(Exception::new(ExceptionKind::TypeError, vec!["pop() takes no arguments".to_string()]));
                                 }
-                            },
+                                return b.pop().map_or(Err(Exception::new(ExceptionKind::IndexError, vec!["pop from empty bytearray".to_string()])), |byte| Ok(Value::Int(byte as i64)));
+                            } else { 
+                                return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected bytearray object".to_string()])); 
+                            }
+                        },
                         // Tuple methods
                         "tuple_count" => {
                             if let Value::Tuple(t) = *object {
-                                return Ok(Value::Int(t.iter().filter(|x| x == &evaluated_args[0]).count() as i64));
+                                return Ok(Value::Int(t.iter().filter(|x| **x == evaluated_args[0]).count() as i64));
                             } else {
                                 return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected tuple object".to_string()]));
                             }
@@ -1252,11 +1350,10 @@ impl Interpreter {
                                 return Err(Exception::new(ExceptionKind::TypeError, vec!["Expected tuple object".to_string()])); 
                             }
                         },
-                        _ => Err(Exception::new(ExceptionKind::AttributeError, vec![format!("Unknown builtin method: {}", method_name)])),
+                        _ => return Err(Exception::new(ExceptionKind::AttributeError, vec![format!("Unknown builtin method: {}", method_name)])),
                     }
-                },
-                // Removed Value::Ident handling (no longer supported)
-                callable_val => {
+                } else {
+                    // Handle non-builtin method calls
                     if let Some((params, body)) = self.functions.get(&callable_val.to_display_string()) {
                         let params = params.clone();
                         let body = body.clone();
@@ -1273,6 +1370,13 @@ impl Interpreter {
                         Err(Exception::new(ExceptionKind::TypeError, vec![format!("'{}' object is not callable", callable_val.type_name())]))
                     }
                 }
+            }
+            Expr::GetAttr { object, name } => {
+                let obj = self.eval_inner(object)?;
+                Ok(Value::BuiltinMethod {
+                    object: Box::new(obj),
+                    method_name: name.clone(),
+                })
             }
             expr => Err(Exception::new(ExceptionKind::NotImplementedError, vec![format!("Expression not implemented: {:?}", expr)])),
         }
@@ -1375,7 +1479,6 @@ impl Value {
             Value::Ellipsis => "EllipsisType",
             Value::Exception(_) => "Exception",
             Value::BuiltinMethod { .. } => "builtin_method",
-            Value::MemoryView(_) => "memoryview",
         }
     }
 
