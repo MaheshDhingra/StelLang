@@ -84,6 +84,7 @@ const config = {
             label: "Tutorial",
           },
           { to: "/blog", label: "Blog", position: "left" },
+          { to: "/registry", label: "Packages", position: "left" },
           { to: "/community", label: "Community", position: "left" },
           {
             href: "https://github.com/MaheshDhingra/StelLang",
