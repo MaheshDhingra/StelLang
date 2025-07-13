@@ -166,41 +166,92 @@ impl Interpreter {
                 }
             }
             Expr::AssignIndex { collection, index, expr } => {
-                let mut coll = self.eval_inner(collection)?;
                 let idx = self.eval_inner(index)?;
                 let val = self.eval_inner(expr)?;
-                match (&mut coll, idx) {
-                    (Value::List(arr), Value::Int(n)) => {
-                        let i = n as usize;
-                        if i < arr.len() {
-                            arr[i] = val.clone();
-                            Ok(coll)
-                        } else {
-                            Err(Exception::new(ExceptionKind::IndexError, vec![format!("list assignment index {} out of range", n)]))
-                        }
-                    }
-                    (Value::Dict(map), key) => {
-                        map.insert(key, val.clone());
-                        Ok(coll)
-                    }
-                    (Value::ByteArray(arr), Value::Int(n)) => {
-                        let i = n as usize;
-                        if i < arr.len() {
-                            if let Value::Int(byte_val) = val {
-                                if byte_val >= 0 && byte_val <= 255 {
-                                    arr[i] = byte_val as u8;
-                                    Ok(coll)
+                
+                // Special case: if collection is a variable reference, we need to update the environment
+                if let Expr::Ident(name) = collection.as_ref() {
+                    if let Some(existing_value) = self.env.get_mut(name) {
+                        match existing_value {
+                            Value::List(arr) => {
+                                if let Value::Int(n) = idx {
+                                    let i = n as usize;
+                                    if i < arr.len() {
+                                        arr[i] = val.clone();
+                                        Ok(val)
+                                    } else {
+                                        Err(Exception::new(ExceptionKind::IndexError, vec![format!("list assignment index {} out of range", n)]))
+                                    }
                                 } else {
-                                    Err(Exception::new(ExceptionKind::ValueError, vec!["byte must be in range(0, 256)".to_string()]))
+                                    Err(Exception::new(ExceptionKind::TypeError, vec!["list indices must be integers".to_string()]))
+                                }
+                            }
+                            Value::Dict(map) => {
+                                map.insert(idx, val.clone());
+                                Ok(val)
+                            }
+                            Value::ByteArray(arr) => {
+                                if let Value::Int(n) = idx {
+                                    let i = n as usize;
+                                    if i < arr.len() {
+                                        if let Value::Int(byte_val) = val {
+                                            if byte_val >= 0 && byte_val <= 255 {
+                                                arr[i] = byte_val as u8;
+                                                Ok(val)
+                                            } else {
+                                                Err(Exception::new(ExceptionKind::ValueError, vec!["byte must be in range(0, 256)".to_string()]))
+                                            }
+                                        } else {
+                                            Err(Exception::new(ExceptionKind::TypeError, vec!["bytearray assignment must be an integer".to_string()]))
+                                        }
+                                    } else {
+                                        Err(Exception::new(ExceptionKind::IndexError, vec![format!("bytearray assignment index {} out of range", n)]))
+                                    }
+                                } else {
+                                    Err(Exception::new(ExceptionKind::TypeError, vec!["bytearray indices must be integers".to_string()]))
+                                }
+                            }
+                            coll => Err(Exception::new(ExceptionKind::TypeError, vec![format!("'{}' object does not support item assignment", coll.type_name())]))
+                        }
+                    } else {
+                        Err(Exception::new(ExceptionKind::NameError, vec![format!("name '{}' is not defined", name)]))
+                    }
+                } else {
+                    // General case: evaluate collection and modify a copy
+                    let mut coll = self.eval_inner(collection)?;
+                    match (&mut coll, idx) {
+                        (Value::List(arr), Value::Int(n)) => {
+                            let i = n as usize;
+                            if i < arr.len() {
+                                arr[i] = val.clone();
+                                Ok(coll)
+                            } else {
+                                Err(Exception::new(ExceptionKind::IndexError, vec![format!("list assignment index {} out of range", n)]))
+                            }
+                        }
+                        (Value::Dict(map), key) => {
+                            map.insert(key, val.clone());
+                            Ok(coll)
+                        }
+                        (Value::ByteArray(arr), Value::Int(n)) => {
+                            let i = n as usize;
+                            if i < arr.len() {
+                                if let Value::Int(byte_val) = val {
+                                    if byte_val >= 0 && byte_val <= 255 {
+                                        arr[i] = byte_val as u8;
+                                        Ok(coll)
+                                    } else {
+                                        Err(Exception::new(ExceptionKind::ValueError, vec!["byte must be in range(0, 256)".to_string()]))
+                                    }
+                                } else {
+                                    Err(Exception::new(ExceptionKind::TypeError, vec!["bytearray assignment must be an integer".to_string()]))
                                 }
                             } else {
-                                Err(Exception::new(ExceptionKind::TypeError, vec!["bytearray assignment must be an integer".to_string()]))
+                                Err(Exception::new(ExceptionKind::IndexError, vec![format!("bytearray assignment index {} out of range", n)]))
                             }
-                        } else {
-                            Err(Exception::new(ExceptionKind::IndexError, vec![format!("bytearray assignment index {} out of range", n)]))
                         }
+                        (coll, _) => Err(Exception::new(ExceptionKind::TypeError, vec![format!("'{}' object does not support item assignment", coll.type_name())]))
                     }
-                    (coll, _) => Err(Exception::new(ExceptionKind::TypeError, vec![format!("'{}' object does not support item assignment", coll.type_name())]))
                 }
             }
             Expr::BinaryOp { left, op, right } => {
@@ -417,6 +468,13 @@ impl Interpreter {
                     },
                     (Value::List(l), r_val) if op == "not in" => {
                         Ok(Value::Bool(!l.contains(&r_val)))
+                    },
+                    // Handle membership operators with item on left, container on right
+                    (l_val, Value::List(r)) if op == "in" => {
+                        Ok(Value::Bool(r.contains(&l_val)))
+                    },
+                    (l_val, Value::List(r)) if op == "not in" => {
+                        Ok(Value::Bool(!r.contains(&l_val)))
                     },
                     (Value::None, Value::None) if op == "is" => Ok(Value::Bool(true)),
                     (Value::None, Value::None) if op == "is not" => Ok(Value::Bool(false)),

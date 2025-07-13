@@ -387,6 +387,7 @@ impl Lexer {
             Some(',') => { self.advance(); Ok(Token::Comma) },
             Some(';') => { self.advance(); Ok(Token::Semicolon) },
             Some('.') => { self.advance(); Ok(Token::Dot) }, // Added for attribute access
+            Some(':') => { self.advance(); Ok(Token::Colon) }, // Added for dictionary literals
             Some(ch) if ch.is_ascii_digit() => self.read_number(),
             Some(ch) if ch.is_alphabetic() || ch == '_' => Ok(self.read_ident()),
             Some(ch) => Err(Exception::new(ExceptionKind::SyntaxError, vec![format!("Unexpected character: {}", ch)])),

@@ -16,6 +16,14 @@ fn eval_code(code: &str) -> Result<stellang::lang::interpreter::Value, Exception
     interpreter.eval(&expr)
 }
 
+// Helper function to convert Err(Exception) to Value::Exception for testing
+fn eval_code_with_exception_handling(code: &str) -> stellang::lang::interpreter::Value {
+    match eval_code(code) {
+        Ok(value) => value,
+        Err(exception) => stellang::lang::interpreter::Value::Exception(exception),
+    }
+}
+
 #[test]
 fn test_int_arithmetic() {
     assert_eq!(eval_code("1 + 2"), Ok(stellang::lang::interpreter::Value::Int(3)));
@@ -123,29 +131,29 @@ fn test_membership_ops() {
 
 #[test]
 fn test_division_by_zero() {
-    let result = eval_code("10 / 0");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("10 / 0");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::ZeroDivisionError);
     } else {
         panic!("Expected ZeroDivisionError, got {:?}", result);
     }
 
-    let result = eval_code("10 // 0");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("10 // 0");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::ZeroDivisionError);
     } else {
         panic!("Expected ZeroDivisionError, got {:?}", result);
     }
 
-    let result = eval_code("10 % 0");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("10 % 0");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::ZeroDivisionError);
     } else {
         panic!("Expected ZeroDivisionError, got {:?}", result);
     }
 
-    let result = eval_code("10.0 / 0.0");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("10.0 / 0.0");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::ZeroDivisionError);
     } else {
         panic!("Expected ZeroDivisionError, got {:?}", result);
@@ -154,29 +162,29 @@ fn test_division_by_zero() {
 
 #[test]
 fn test_unsupported_operations() {
-    let result = eval_code("\"a\" + 1");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("\"a\" + 1");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::TypeError);
     } else {
         panic!("Expected TypeError, got {:?}", result);
     }
 
-    let result = eval_code("1 + \"a\"");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("1 + \"a\"");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::TypeError);
     } else {
         panic!("Expected TypeError, got {:?}", result);
     }
 
-    let result = eval_code("true + 1");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("true + 1");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::TypeError);
     } else {
         panic!("Expected TypeError, got {:?}", result);
     }
 
-    let result = eval_code("~true");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("~true");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::TypeError);
     } else {
         panic!("Expected TypeError, got {:?}", result);
@@ -185,15 +193,15 @@ fn test_unsupported_operations() {
 
 #[test]
 fn test_negative_repetition() {
-    let result = eval_code("\"abc\" * -1");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("\"abc\" * -1");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::ValueError);
     } else {
         panic!("Expected ValueError, got {:?}", result);
     }
 
-    let result = eval_code("[-1, -2] * -1");
-    if let Ok(stellang::lang::interpreter::Value::Exception(e)) = result {
+    let result = eval_code_with_exception_handling("[-1, -2] * -1");
+    if let stellang::lang::interpreter::Value::Exception(e) = result {
         assert_eq!(e.kind, stellang::lang::exceptions::ExceptionKind::ValueError);
     } else {
         panic!("Expected ValueError, got {:?}", result);

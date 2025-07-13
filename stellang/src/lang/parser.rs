@@ -784,7 +784,51 @@ impl Parser {
 
     fn parse_primary(&mut self) -> Result<Expr, Exception> {
         match self.peek() {
-            Token::LBrace => self.parse_block()?.ok_or_else(|| Exception::new(ExceptionKind::SyntaxError, vec!["Expected block expression.".to_string()])),
+            Token::LBrace => {
+                // Check if this is a dictionary literal or a block
+                self.advance(); // consume '{'
+                if let Token::RBrace = self.peek() {
+                    // Empty dictionary
+                    self.advance();
+                    return Ok(Expr::MapLiteral(vec![]));
+                }
+                
+                // Look ahead to see if we have key-value pairs (key: value)
+                // We need to peek ahead to see if the next token after the first expression is a colon
+                let start_pos = self.pos;
+                let first_expr = self.parse_expr()?.ok_or_else(|| Exception::new(ExceptionKind::SyntaxError, vec!["Expected expression in block or dictionary.".to_string()]))?;
+                
+                if let Token::Colon = self.peek() {
+                    // This is a dictionary literal
+                    self.advance(); // consume ':'
+                    let value = self.parse_expr()?.ok_or_else(|| Exception::new(ExceptionKind::SyntaxError, vec!["Expected value in dictionary literal.".to_string()]))?;
+                    let mut pairs = vec![(first_expr, value)];
+                    
+                    while let Token::Comma = self.peek() {
+                        self.advance(); // consume ','
+                        let key = self.parse_expr()?.ok_or_else(|| Exception::new(ExceptionKind::SyntaxError, vec!["Expected key in dictionary literal.".to_string()]))?;
+                        
+                        if let Token::Colon = self.peek() {
+                            self.advance(); // consume ':'
+                            let value = self.parse_expr()?.ok_or_else(|| Exception::new(ExceptionKind::SyntaxError, vec!["Expected value in dictionary literal.".to_string()]))?;
+                            pairs.push((key, value));
+                        } else {
+                            return Err(Exception::new(ExceptionKind::SyntaxError, vec!["Expected ':' after key in dictionary literal.".to_string()]));
+                        }
+                    }
+                    
+                    if let Token::RBrace = self.peek() {
+                        self.advance(); // consume '}'
+                        return Ok(Expr::MapLiteral(pairs));
+                    } else {
+                        return Err(Exception::new(ExceptionKind::SyntaxError, vec!["Expected '}' at end of dictionary literal.".to_string()]));
+                    }
+                } else {
+                    // This is a block, not a dictionary
+                    self.pos = start_pos - 1; // Reset to before the '{' so parse_block can consume it
+                    return self.parse_block()?.ok_or_else(|| Exception::new(ExceptionKind::SyntaxError, vec!["Expected block expression.".to_string()]));
+                }
+            },
             Token::LBracket => {
                 self.advance();
                 let mut items = Vec::new();
