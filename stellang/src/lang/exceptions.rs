@@ -1,5 +1,5 @@
 // Python-style exception hierarchy for StelLang
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ExceptionKind {
     BaseException,
     Exception,
@@ -65,12 +65,13 @@ pub enum ExceptionKind {
     PermissionError,
     ProcessLookupError,
     TimeoutError,
+    Return,
     Break,
     Continue,
     // ...add more as needed
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Exception {
     pub kind: ExceptionKind,
     pub args: Vec<String>,

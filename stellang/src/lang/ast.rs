@@ -1,6 +1,6 @@
 // AST definitions for StelLang
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Expr {
     Integer(i64),
     Float(f64),
@@ -129,5 +129,23 @@ pub enum Expr {
         expr: Box<Expr>,
         cases: Vec<(Expr, Expr)>,
         default: Option<Box<Expr>>,
+    },
+    ClassDef {
+        name: String,
+        bases: Vec<Expr>,
+        body: Vec<Expr>,
+    },
+    ClassInit {
+        class_name: String,
+        args: Vec<Expr>,
+    },
+    MethodCall {
+        object: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
+    },
+    FieldAccess {
+        object: Box<Expr>,
+        field: String,
     },
 }

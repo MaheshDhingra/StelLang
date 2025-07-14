@@ -153,6 +153,53 @@ fn test_str_istitle() {
     assert_eq!(eval_code("\"\".istitle()"), Ok(stellang::lang::interpreter::Value::Bool(false)));
 }
 
+#[test]
+fn test_list_slicing() {
+    assert_eq!(eval_code("[1,2,3,4,5][1:3]"), Ok(stellang::lang::interpreter::Value::List(vec![
+        stellang::lang::interpreter::Value::Int(2),
+        stellang::lang::interpreter::Value::Int(3),
+    ])));
+    assert_eq!(eval_code("[1,2,3,4,5][:2]"), Ok(stellang::lang::interpreter::Value::List(vec![
+        stellang::lang::interpreter::Value::Int(1),
+        stellang::lang::interpreter::Value::Int(2),
+    ])));
+    assert_eq!(eval_code("[1,2,3,4,5][2:]"), Ok(stellang::lang::interpreter::Value::List(vec![
+        stellang::lang::interpreter::Value::Int(3),
+        stellang::lang::interpreter::Value::Int(4),
+        stellang::lang::interpreter::Value::Int(5),
+    ])));
+    assert_eq!(eval_code("[1,2,3,4,5][:]"), Ok(stellang::lang::interpreter::Value::List(vec![
+        stellang::lang::interpreter::Value::Int(1),
+        stellang::lang::interpreter::Value::Int(2),
+        stellang::lang::interpreter::Value::Int(3),
+        stellang::lang::interpreter::Value::Int(4),
+        stellang::lang::interpreter::Value::Int(5),
+    ])));
+}
+
+#[test]
+fn test_str_slicing() {
+    assert_eq!(eval_code("'hello'[1:4]"), Ok(stellang::lang::interpreter::Value::Str("ell".to_string())));
+    assert_eq!(eval_code("'hello'[:2]"), Ok(stellang::lang::interpreter::Value::Str("he".to_string())));
+    assert_eq!(eval_code("'hello'[3:]"), Ok(stellang::lang::interpreter::Value::Str("lo".to_string())));
+    assert_eq!(eval_code("'hello'[:]"), Ok(stellang::lang::interpreter::Value::Str("hello".to_string())));
+}
+
+#[test]
+fn test_list_comprehension() {
+    assert_eq!(eval_code("[x * 2 for x in [1,2,3]]"), Ok(stellang::lang::interpreter::Value::List(vec![
+        stellang::lang::interpreter::Value::Int(2),
+        stellang::lang::interpreter::Value::Int(4),
+        stellang::lang::interpreter::Value::Int(6),
+    ])));
+}
+
+#[test]
+fn test_iteration() {
+    assert_eq!(eval_code("sum([1,2,3,4])"), Ok(stellang::lang::interpreter::Value::Int(10)));
+    assert_eq!(eval_code("''.join([str(x) for x in [1,2,3]])"), Ok(stellang::lang::interpreter::Value::Str("123".to_string())));
+}
+
 // Helper to convert Lexer output to Vec<Token>
 trait LexerExt {
     fn next_token_stream(&mut self) -> Vec<stellang::lang::lexer::Token>;

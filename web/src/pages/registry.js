@@ -7,31 +7,31 @@ import styles from './registry.module.css';
 
 const REGISTRY_URL = 'https://stellang.maheshdhingra.xyz/registry';
 
-function PackageCard({ package }) {
+function PackageCard({ pkg }) {
   return (
     <div className={styles.packageCard}>
       <div className={styles.packageHeader}>
         <h3 className={styles.packageName}>
-          <Link to={`/registry/package/${package.name}`}>
-            {package.name}
+          <Link to={`/registry/package/${pkg.name}`}>
+            {pkg.name}
           </Link>
         </h3>
-        <span className={styles.packageVersion}>v{package.version}</span>
+        <span className={styles.packageVersion}>v{pkg.version}</span>
       </div>
-      {package.description && (
-        <p className={styles.packageDescription}>{package.description}</p>
+      {pkg.description && (
+        <p className={styles.packageDescription}>{pkg.description}</p>
       )}
-      {package.authors && package.authors.length > 0 && (
+      {pkg.authors && pkg.authors.length > 0 && (
         <p className={styles.packageAuthors}>
-          by {package.authors.join(', ')}
+          by {pkg.authors.join(', ')}
         </p>
       )}
       <div className={styles.packageMeta}>
         <span className={styles.packageDate}>
-          {new Date(package.upload_date).toLocaleDateString()}
+          {new Date(pkg.upload_date).toLocaleDateString()}
         </span>
         <span className={styles.packageSize}>
-          {(package.size / 1024).toFixed(1)} KB
+          {(pkg.size / 1024).toFixed(1)} KB
         </span>
       </div>
     </div>
@@ -56,9 +56,9 @@ function SearchBar({ onSearch }) {
           onChange={(e) => setQuery(e.target.value)}
           className={styles.searchInput}
         />
-        <button type="submit" className={styles.searchButton}>
-          🔍 Search
-        </button>
+                 <button type="submit" className={styles.searchButton}>
+           Search
+         </button>
       </div>
     </form>
   );

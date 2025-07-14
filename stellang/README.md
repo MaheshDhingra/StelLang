@@ -1,52 +1,10 @@
 # StelLang
 
-A fast, expressive, Rust-powered programming language designed for engineers.
-
-## Features
-- Python-like syntax, Rust-like performance
-- Variables, arithmetic, and assignment
-- Control flow: `if`, `else`, `while`, `break`, `continue`
-- Functions and function calls
-- Blocks and scopes
-- Built-in `print` function
-- Package manager: `pico`
-- Logical operators: `and`, `or`, `not`
-- Variable declarations: `let`, `const`
-- Boolean and null literals: `true`, `false`, `null`
-- Built-in `input` function
-- Built-in math/array/string functions: `sqrt`, `abs`, `pow`, `min`, `max`, `sum`, `range`, `reverse`, `join`, `split`, `sort`, `map`, `filter`, `find`, `reduce`, `zip`, `sort`, `join`, `split`, `reverse`, `len`
-- Pattern matching: `match`, `case`
-- Structs and enums (syntax only, WIP)
-- Import/module system
-- **Extensive Python built-ins**: abs, all, any, ascii, bin, bool, breakpoint, bytearray, bytes, callable, chr, classmethod, compile, complex, delattr, dict, dir, divmod, enumerate, eval, exec, filter, float, format, frozenset, getattr, globals, hasattr, hash, help, hex, id, input, int, isinstance, issubclass, iter, len, list, locals, map, max, memoryview, min, next, object, oct, open, ord, pow, print, property, range, repr, reversed, round, set, setattr, slice, sorted, staticmethod, str, sum, super, tuple, type, vars, zip, __import__
-- **Python-style Exception Hierarchy**: All built-in exceptions (BaseException, Exception, TypeError, ValueError, IndexError, KeyError, etc.) are supported as first-class objects. You can raise, catch, and inspect exceptions just like in Python. Exception objects support `args`, `context`, `cause`, `suppress_context`, and `notes`.
-
-## Exception Handling
-
-StelLang supports Python-style exceptions. Example:
-
-```stel
-try {
-    let x = [1,2][5]  # Raises IndexError
-} catch e {
-    print("Caught exception:", e)
-    print("Type:", type(e))
-    print("Args:", e.args)
-}
-```
-
-You can raise exceptions manually:
-
-```stel
-throw Exception("Something went wrong!")
-throw TypeError("Bad type!")
-```
-
-All built-in exceptions are available and follow the Python hierarchy. Exception objects have fields: `args`, `context`, `cause`, `suppress_context`, `notes`.
+A fast, expressive, Rust-powered programming language designed for engineers, with a Pythonic feel and Rust-like performance.
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### 1. Build the Language
 ```sh
@@ -59,324 +17,148 @@ cargo run --bin stellang
 ```
 
 ### 3. Run a Script
-Write your StelLang code in `src/main.stel` and run:
+Write your StelLang code in any `.stel` file, e.g. `main.stel`:
 ```sh
-cargo run --bin stellang
+cargo run --bin stellang -- main.stel
 ```
-
-### 4. Run the Package Manager (pico)
-```sh
-cargo run --bin pico -- <command>
-```
-For example, to initialize a project:
-```sh
-cargo run --bin pico -- init
-```
-
-## Language Examples
-
-### Variables and Arithmetic
-```stel
-x = 10
-y = 20
-z = x * 2 + y / 5
-print(z)
-```
-
-### If/Else
-```stel
-if z > 20 {
-    print("Large value!")
-} else {
-    print("Small value!")
-}
-```
-
-### While Loop
-```stel
-count = 0
-while count < 5 {
-    print(count)
-    count = count + 1
-}
-```
-
-### Functions
-```stel
-fn add(a, b) {
-    return a + b
-}
-result = add(3, 4)
-print(result)
-```
-
-### Break and Continue
-```stel
-count = 0
-while count < 10 {
-    if count == 3 {
-        count = count + 1
-        continue
-    }
-    if count == 7 {
-        break
-    }
-    print(count)
-    count = count + 1
-}
-```
-
-### Logical Operators
-```stel
-a = 1
-b = 0
-if a and not b {
-    print("a is true and b is false!")
-}
-if a or b {
-    print("at least one is true!")
-}
-```
-
-### Variable Declarations
-```stel
-let a = 42
-const b = "hello"
-print(a)
-print(b)
-```
-
-### Boolean and Null Literals
-```stel
-let t = true
-let f = false
-let n = null
-print(t)
-print(f)
-print(n)
-```
-
-### Input
-```stel
-name = input()
-print("Hello, " + name)
-```
-
-### Built-in Math and Array Functions
-```stel
-print(sqrt(16))
-print(abs(-5))
-print(pow(2, 8))
-arr = range(1, 5)
-print(arr)
-print(sum(arr))
-print(min(3, 7))
-print(max(3, 7))
-```
-
-### Array Utilities
-```stel
-print(reverse(arr))
-print(join(arr, ","))
-print(split("a,b,c", ","))
-print(sort([3,1,2]))
-```
-
-### Higher-Order Functions
-```stel
-squared = map(arr, fn(x) { return x * x })
-evens = filter(arr, fn(x) { return x % 2 == 0 })
-first_even = find(arr, fn(x) { return x % 2 == 0 })
-sum_reduce = reduce(arr, fn(acc, x) { return acc + x }, 0)
-pairs = zip([1,2,3], ["a","b","c"])
-print(squared)
-print(evens)
-print(first_even)
-print(sum_reduce)
-print(pairs)
-```
-
-### Find, Reduce, Zip, and More
-```stel
-arr2 = [10, 20, 30, 40]
-found = find(arr2, fn(x) { return x > 15 })
-reduced = reduce(arr2, fn(acc, x) { return acc * x }, 1)
-zipped = zip(arr, arr2)
-print(found)
-print(reduced)
-print(zipped)
-```
-
-### String and Array Manipulation
-```stel
-s = "hello,world,stel"
-split_arr = split(s, ",")
-joined = join(split_arr, "-")
-reversed = reverse(s)
-print(split_arr)
-print(joined)
-print(reversed)
-```
-
-### Sorting
-```stel
-unsorted = [5, 2, 9, 1]
-print(sort(unsorted))
-```
-
-## Package Manager: pico
-
-### Initialize a Project
-```sh
-cargo run --bin pico -- init
-```
-
-### Add a Dependency
-```sh
-cargo run --bin pico -- add
-```
-
-### Build the Project
-```sh
-cargo run --bin pico -- build
-```
-
-### Install Dependencies
-```sh
-cargo run --bin pico -- install
-```
-
-### Publish a Package
-```sh
-cargo run --bin pico -- publish
-```
-
-## Testing Language Features
-
-### 1. Arithmetic and Assignment
-- Enter `x = 5 + 2 * 3` in the REPL. Output should be `= 11`.
-- Enter `print(x)` to print the value.
-
-### 2. If/Else
-- Enter:
-  ```stel
-  if x > 10 {
-      print(1)
-  } else {
-      print(0)
-  }
-  ```
-- Output should be `1` if `x > 10`, else `0`.
-
-### 3. While Loop
-- Enter:
-  ```stel
-  count = 0
-  while count < 3 {
-      print(count)
-      count = count + 1
-  }
-  ```
-- Output should be `0`, `1`, `2` on separate lines.
-
-### 4. Functions
-- Enter:
-  ```stel
-  fn square(n) { return n * n }
-  print(square(5))
-  ```
-- Output should be `25`.
-
-### 5. Print
-- Enter `print(123)` or `print(x)` to print values.
-
-### 6. Scripts
-- Edit `src/main.stel` with any StelLang code and run `cargo run` to execute it.
-
-### Pattern Matching
-```stel
-x = 2
-match x {
-    1 => print("one"),
-    2 => print("two"),
-    _ => print("other"),
-}
-```
-
-### Structs
-```stel
-struct Point { x, y }
-p = Point { x: 1, y: 2 }
-print(p)
-```
-
-### Enums
-```stel
-enum Color { Red, Green, Blue }
-c = Color::Red
-print(c)
-```
-
-Pattern matching, structs, and enums are now fully supported at runtime!
-
-### For Loop
-```stel
-for i in arr {
-    print("for-loop:", i)
-}
-```
-
-### Map/Array Utilities
-```stel
-m = {"a": 1, "b": 2, "c": 3}
-print(map_keys(m))
-print(map_values(m))
-print(array_contains(arr, 3))
-print(array_index_of(arr, 3))
-```
-
-### Error Handling
-```stel
-try {
-    throw("fail!")
-} catch err {
-    print("Caught error:", err)
-}
-```
-
-## Contributing
-Pull requests and feedback are welcome!
 
 ---
-*Note: This language is under active development. Features and syntax may change.*
 
-### Tuple Literals and Destructuring
-```stel
-(a, b) = (1, 2)
-print(a)
-print(b)
+## 🧪 Running All Tests
+
+Run the full test suite (unit, integration, and language tests):
+```sh
+cargo test
 ```
 
-### More Built-ins
-```stel
-nums = [1, 2, 3, 4, 5]
-print(all(nums, fn(x) { return x > 0 }))
-print(any(nums, fn(x) { return x == 3 }))
-print(flatten([[1,2],[3,4],[5]]))
-print(unique([1,2,2,3,3,3,4]))
-print(count(nums, 3))
-print(repeat("hi", 3))
-print(enumerate(["a","b","c"]))
+Run a specific test file:
+```sh
+cargo test --test operator_tests
+cargo test --test builtin_method_tests
 ```
 
-### String Interpolation
-```stel
-vars = {"name": "Stel", "n": 42}
-print(interp("Hello, {name}! Your number is {n}.", vars))
+To add new tests, see the `tests/` directory for examples. Add your `.rs` or `.stel` test files and use Rust’s test framework or language-level assertions.
+
+---
+
+## 📦 Package Manager: `stel`
+
+StelLang comes with a built-in package manager and CLI tool called `stel`.
+
+### Registry
+- The default registry is: **https://stellang.maheshdhingra.xyz/registry**
+- You can publish, install, and search for packages here.
+
+### Common Commands
+
+#### Initialize a Project
+```sh
+cargo run --bin stel -- init
 ```
 
-### Import/Module System
-```stel
-import "utils.stel"
-# Now you can use functions/variables from utils.stel
+#### Add a Dependency
+```sh
+cargo run --bin stel -- add <package>[@<version>]
 ```
+
+#### Build the Project
+```sh
+cargo run --bin stel -- build
+```
+
+#### Install Dependencies
+```sh
+cargo run --bin stel -- install
+```
+
+#### Run Tests
+```sh
+cargo run --bin stel -- test
+```
+
+#### Update Dependencies
+```sh
+cargo run --bin stel -- update
+```
+
+#### Publish a Package
+```sh
+cargo run --bin stel -- publish
+```
+
+#### Search the Registry
+```sh
+cargo run --bin stel -- search <query>
+```
+
+#### Run a Script
+```sh
+cargo run --bin stel -- run <file.stel>
+```
+
+#### Clean Build Artifacts
+```sh
+cargo run --bin stel -- clean
+```
+
+#### Get Help
+```sh
+cargo run --bin stel -- help
+```
+
+---
+
+## 🧪 Testing the Package Manager
+
+Tests for the `stel` package manager are in `tests/` and cover:
+- Project initialization
+- Adding, installing, and updating dependencies
+- Building and running projects
+- Registry search and publish
+- Error handling (network, version, etc.)
+
+To run all package manager tests:
+```sh
+cargo test --test package_manager_tests
+```
+
+To add new tests, create a file like `tests/package_manager_tests.rs` and use Rust’s test framework. You can also add `.stel` scripts in `tests/` and invoke them via the CLI in your tests.
+
+---
+
+## 📝 Language Features
+
+- Python-like syntax, Rust-like performance
+- Variables, arithmetic, assignment
+- Control flow: `if`, `else`, `while`, `break`, `continue`
+- Functions, blocks, scopes
+- Built-in types: int, float, str, list, dict, set, tuple, bytes, bytearray, range, etc.
+- Slicing, iteration, comprehensions (WIP)
+- Pattern matching: `match`, `case`
+- Exception system: Python-style exceptions, try/catch, throw
+- Import/module system
+- Package manager: `stel`
+
+See `tests/` for feature tests and usage examples.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo and clone it.
+2. Create a new branch for your feature or bugfix.
+3. Write code and **add tests** in `tests/`.
+4. Run `cargo test` and ensure all tests pass.
+5. Submit a pull request with a clear description.
+
+All contributions should include tests and documentation updates as needed.
+
+
+---
+
+## 🌐 Registry
+
+- Default registry: [https://stellang.maheshdhingra.xyz/registry](https://stellang.maheshdhingra.xyz/registry)
+- You can publish and search for packages here using the `stel` CLI.
+
+---

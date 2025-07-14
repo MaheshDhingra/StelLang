@@ -10,6 +10,13 @@ toml = "0.8"
 semver = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.0", features = ["full"] }
+flate2 = "1.0"
+tar = "0.4"
+warp = "0.3"
+serde_json = "1.0"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "1.0"
 
 [[bin]]
 name = "stellang"
@@ -19,6 +26,10 @@ path = "src/main.rs"
 name = "stel"
 path = "src/bin/stel.rs"
 
+[[bin]]
+name = "registry"
+path = "src/bin/registry.rs"
+
 [[test]]
 name = "operator_tests"
 path = "tests/operator_tests.rs"
@@ -26,3 +37,7 @@ path = "tests/operator_tests.rs"
 [[test]]
 name = "builtin_method_tests"
 path = "tests/builtin_method_tests.rs"
+
+[[test]]
+name = "advanced_features_tests"
+path = "tests/advanced_features_tests.rs"
