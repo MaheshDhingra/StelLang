@@ -1,6 +1,6 @@
 ---
 slug: publish-package
-title: Building and Publishing a Package to the Stel Registry
+title: "Building and Publishing a Package to the Stel Registry"
 authors: Mahesh
 tags: [StelLang, package, registry, publish]
 ---

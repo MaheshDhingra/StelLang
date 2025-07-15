@@ -1,6 +1,6 @@
 ---
 slug: best-practices
-title: Best Practices and Coding Style in StelLang
+title: "Best Practices and Coding Style in StelLang"
 authors: Mahesh
 date: 2025-07-04
 tags: [StelLang, best practices, style, guide]

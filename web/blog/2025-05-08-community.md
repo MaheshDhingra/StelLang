@@ -1,6 +1,6 @@
 ---
 slug: community
-title: Join the StelLang Community and Contribute!
+title: "Join the StelLang Community and Contribute!"
 authors: Mahesh
 tags: [StelLang, community, contribute, open source]
 ---

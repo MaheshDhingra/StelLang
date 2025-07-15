@@ -1,6 +1,6 @@
 ---
 slug: debugging
-title: Debugging and Troubleshooting in StelLang
+title: "Debugging and Troubleshooting in StelLang"
 authors: Mahesh
 date: 2025-07-03
 tags: [StelLang, debugging, troubleshooting, guide]

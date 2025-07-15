@@ -1,6 +1,6 @@
 ---
 slug: vision-and-philosophy
-title: The Vision and Philosophy of StelLang
+title: "The Vision and Philosophy of StelLang"
 authors: Mahesh
 tags: [StelLang, philosophy, vision, language]
 ---

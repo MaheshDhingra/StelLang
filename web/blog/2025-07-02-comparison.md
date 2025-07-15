@@ -1,6 +1,6 @@
 ---
 slug: comparison
-title: StelLang vs. Python, Rust, and Go: A Modern Language Comparison
+title: "StelLang vs. Python, Rust, and Go: A Modern Language Comparison"
 authors: Mahesh
 date: 2025-07-02
 tags: [StelLang, comparison, Python, Rust, Go]

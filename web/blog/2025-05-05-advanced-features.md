@@ -1,6 +1,6 @@
 ---
 slug: advanced-features
-title: Advanced Features in StelLang: Async, Pattern Matching, and More
+title: "Advanced Features in StelLang: Async, Pattern Matching, and More"
 authors: Mahesh
 tags: [StelLang, advanced, async, pattern matching, typing]
 ---

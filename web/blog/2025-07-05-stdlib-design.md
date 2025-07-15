@@ -1,6 +1,6 @@
 ---
 slug: stdlib-design
-title: Designing the StelLang Standard Library
+title: "Designing the StelLang Standard Library"
 authors: Mahesh
 date: 2025-07-05
 tags: [StelLang, standard library, design, implementation]

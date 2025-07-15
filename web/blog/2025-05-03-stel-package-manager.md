@@ -1,6 +1,6 @@
 ---
 slug: stel-package-manager
-title: stel.rs: The Package Manager Powering StelLang
+title: "stel.rs: The Package Manager Powering StelLang"
 authors: Mahesh
 tags: [StelLang, package manager, stel.rs, ecosystem]
 ---
