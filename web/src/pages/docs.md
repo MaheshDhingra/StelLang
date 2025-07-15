@@ -1,64 +1,86 @@
 ---
-sidebar_position: 1
+title: StelLang Examples & Features
+authors: [Mahesh]
+sidebar_position: 2
 ---
 
-# Introduction
+# StelLang: Features & Examples
 
-**Welcome to the world of Stel!** A programming language made entirely in **[Rust](https://www.rust-lang.org/learn)**, designed to meet the demands of the modern programming era. Stel is not just another language; it's a paradigm shift that aims to redefine the way we approach programming.
+**By Mahesh**
 
-Stel has a **Pythonic** yet **Functional**-like syntax. Which means if you know mostly about coding in Python,
-you'd probably appreciate this language.
+Explore the power and simplicity of StelLang with these up-to-date features and code examples.
 
-Stel file formats are either `.stel` or `.stl`, but `.stel` is widely recommended for now.
+## Key Features
 
-## Features
+- **Simple, Pythonic Syntax**: Easy to read and write.
+- **Functional & Procedural**: Mix paradigms as needed.
+- **Async/Await**: Write non-blocking code with ease.
+- **Pattern Matching**: Powerful control flow for complex data.
+- **Gradual Typing**: Choose static or dynamic typing.
+- **Lambdas & Decorators**: Expressive, modern constructs.
+- **Robust Exception System**: Handle errors gracefully.
+- **Built-in Package Manager**: Manage dependencies with `stel.rs`.
 
-- Stel designed for simplicity.
-- Easy to learn and understand.
-- Ideal for beginners.
-- Powerful for handling complex tasks.
-- Suitable for experienced developers too.
+## Examples
 
-## Example
-
-This is an example of a **hello world** program
-
-```js
+### Hello World
+```stel
 print("hello world!")
 ```
 
-### math.stel
-
-```js
+### Math
+```stel
 let x = 10
-let y = 10
-
+let y = 20
 print(x + y)
 ```
 
-### if-else.stel
-
-```js
+### If-Else
+```stel
 let x = true
-let y = false
-
-if x: {
+if x {
     print("True!")
 } else {
     print("False!")
 }
 ```
 
-### lambda.stel
-
-```js
-let x = lambda(a): {
-    return a + 10
+### Lambda
+```stel
+let add = lambda(a, b) {
+    return a + b
 }
-
-print(x(5))
+print(add(5, 7))
 ```
 
-### And many more! 😄
+### Async/Await
+```stel
+async def fetch_data() {
+    // Simulate async work
+    return 42
+}
+let result = await fetch_data()
+print(result)
+```
 
-You can visit the [Stel Repo](https://github.com/MaheshDhingra/StelLang) to see more examples.
+### Pattern Matching
+```stel
+let value = 7
+match value {
+    0 => print("Zero"),
+    1..10 => print("Between 1 and 10"),
+    _ => print("Other")
+}
+```
+
+### Gradual Typing
+```stel
+def add(a: int, b: int) -> int {
+    return a + b
+}
+print(add(2, 3))
+```
+
+---
+
+*See the [full documentation](/docs/stellang) for more!*
