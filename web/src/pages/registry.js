@@ -77,12 +77,12 @@ function RegistryHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/getting-started">
+            to="/docs/getting-started/download">
             Get Started
           </Link>
           <Link
             className="button button--outline button--lg"
-            to="/docs/publishing">
+            to="/docs/stel-package-manager">
             Publish Package
           </Link>
         </div>
