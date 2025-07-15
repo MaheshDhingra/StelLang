@@ -61,7 +61,7 @@ See the [Package Manager Documentation](./stel-package-manager.md) for details.
 
 - [Intro to StelLang](./intro)
 - [Blog Posts](../blog)
-- [Community](../src/pages/community.md)
+- [Community](/community)
 
 ---
 
