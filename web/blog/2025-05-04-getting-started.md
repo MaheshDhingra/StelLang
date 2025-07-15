@@ -1,6 +1,6 @@
 ---
 slug: getting-started
-title: Getting Started with StelLang: A Beginner's Guide
+title: "Getting Started with StelLang: A Beginner's Guide"
 authors: Mahesh
 tags: [StelLang, tutorial, beginner, guide]
 ---
@@ -50,4 +50,4 @@ cargo run hello.stel
 
 ---
 
-*Happy coding with StelLang! If you have questions, reach out on Discord or GitHub.* 
+*Happy coding with StelLang! If you have questions, reach out on Discord or GitHub.*

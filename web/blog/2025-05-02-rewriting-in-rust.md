@@ -1,6 +1,6 @@
 ---
 slug: rewriting-in-rust
-title: Rewriting StelLang in Rust: A Technical Journey
+title: "Rewriting StelLang in Rust: A Technical Journey"
 authors: Mahesh
 tags: [StelLang, Rust, rewrite, technical]
 ---
