@@ -1,50 +1,53 @@
 ---
+authors: [Mahesh]
 sidebar_position: 1
 ---
 
-# Download
+# Download & Install StelLang
 
-## Git clone (recommended)
+**By Mahesh**
 
-Step 1: Make sure to have `git` and `rust` installed
+Get started with StelLang in just a few steps!
 
-```bash
-git --version
-cargo --version
-```
+## Prerequisites
+- [Git](https://git-scm.com/)
+- [Rust (nightly)](https://www.rust-lang.org/tools/install)
 
-**NOTE**: To install `Rust` with `Cargo`:
+## Installation Steps
 
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-Step 2: Git clone the Stel repository
-
-```bash
-git clone https://github.com/MaheshDhingra/StelLang
-```
-
-Step 3: Build it
-
-```bash
-cargo build
-```
-
-Step 4: Test and Run it
-
-```bash
-cargo run ./examples/example.stel
-```
+1. **Check your tools:**
+   ```sh
+   git --version
+   cargo --version
+   ```
+2. **Install Rust (if needed):**
+   ```sh
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   rustup default nightly
+   ```
+3. **Clone the StelLang repository:**
+   ```sh
+   git clone https://github.com/MaheshDhingra/StelLang
+   cd StelLang
+   ```
+4. **Build StelLang:**
+   ```sh
+   cargo build
+   ```
+5. **Run your first program:**
+   ```sh
+   cargo run ./examples/example.stel
+   ```
 
 ## System Requirements
+- Windows 10 (64-bit) or later
+- 2-4 GB RAM or more
+- 100MB disk space or more
 
-* Windows 10 (64-bit) or later
-* 2-4 GB RAM or more
-* 100MB Disk Space or more
+## Notes
+- Internet required for initial setup and updates
+- StelLang requires Rust nightly
 
-## Additional Notes
+---
 
-* An internet connection is required for initial download and potential updates
-* Stel works only in the Rust nightly version
-* This page might changed for the upcoming updates
+*For help, join the [community](/community) or see the [full documentation](/docs/stellang).*

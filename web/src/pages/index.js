@@ -37,6 +37,25 @@ export default function Home() {
       <HomepageHeader />
       <main>
         <HomepageFeatures />
+        <section style={{marginTop: '3rem', textAlign: 'center'}}>
+          <div style={{margin: '2rem 0'}}>
+            <h3>See StelLang in Action!</h3>
+            <div style={{width: '100%', maxWidth: '900px', margin: '0 auto'}}>
+              {/* Replace the src below with your YouTube video link! */}
+              <iframe
+                width="100%"
+                height="500"
+                src="https://www.youtube.com/embed/PLACEHOLDER"
+                title="StelLang Demo"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{borderRadius: '16px', border: '2px solid #eee'}}
+              ></iframe>
+            </div>
+            <p style={{fontStyle: 'italic', color: '#888'}}>Video coming soon! Stay tuned for a live demo of StelLang.</p>
+          </div>
+        </section>
       </main>
     </Layout>
   );
