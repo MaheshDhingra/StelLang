@@ -4,7 +4,7 @@ title: The Vision and Philosophy of StelLang
 authors: Mahesh
 tags: [StelLang, philosophy, vision, language]
 ---
-
+ocs
 # The Vision and Philosophy of StelLang
 
 **By Mahesh**

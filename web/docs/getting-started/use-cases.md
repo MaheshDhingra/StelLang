@@ -1,37 +1,35 @@
 ---
+authors: [Mahesh]
 sidebar_position: 1
 ---
 
-# Use Cases
+# StelLang Use Cases
 
-Stel is a programming language that is designed to be simple, easy to learn, and powerful enough to handle complex tasks. Here are some of the **POTENTIAL** use cases that Stel excels in:
+**By Mahesh**
 
-## Web Development 🌐
+StelLang is designed for versatility. Here are some of the ways you can use it today and in the future:
 
-Stel is well-suited for web development, thanks to its simplicity and ease of use. It is a great language for building dynamic and interactive websites, web applications, and web services.
+## Web Development
+Build dynamic web apps and APIs with ease.
 
-## Data Analysis and Visualization 🔬
+## Data Analysis
+Process and analyze data efficiently with functional features.
 
-Stel is also a great language for data analysis and visualization. Its functional programming features make it easy to manipulate and analyze data, and its support for mathematical operations makes it a powerful tool for data processing and analysis.
+## Education
+Teach programming fundamentals in a modern, approachable way.
 
-## Artificial Intelligence and Machine Learning 🤖
+## AI & Machine Learning
+A promising platform for research and prototyping (coming soon!).
 
-Not yet for now, but Stel is a promising language for artificial intelligence and machine learning. Its support for functional programming and mathematical operations makes it well-suited for these areas of research and development.
+## Game Development
+Create 2D/3D games with simple, readable code.
 
-## Game Development 🎮
+## Scientific Computing
+Run simulations and numerical computations with safety and speed.
 
-Stel is also a good choice for game development. Its simplicity and ease of use make it a great language for creating 2D and 3D games, and its support for functional programming and mathematical operations makes it a powerful tool for game development.
+## Embedded Systems
+Develop for microcontrollers and hardware (future roadmap).
 
-## Scientific Computing 👩🏼‍🔬🧬
+---
 
-Stel is a great language for scientific computing. Its support for functional programming and mathematical operations makes it well-suited for numerical computations, data analysis, and simulations.
-
-## Embedded Systems 🖥️💾
-
-Stel is also a good choice for embedded systems. Its support for functional programming and mathematical operations makes it well-suited for developing software for microcontrollers and other embedded systems.
-
-## Other Use Cases ✨
-
-Stel is a versatile language that can be used in a wide range of other use cases. Its support for functional programming and mathematical operations makes it well-suited for a variety of applications, from web development to data analysis and artificial intelligence.
-
-That's it for now, stay tuned for more use cases and more features in the future!🤖✨
+*StelLang is always growing. Share your use case with the community!*
