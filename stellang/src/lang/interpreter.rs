@@ -4,7 +4,7 @@ use crate::lang::exceptions::{Exception, ExceptionKind};
 use std::time::{Instant, Duration};
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum Value {
     Int(i64),
     Float(f64),
@@ -89,7 +89,7 @@ impl Interpreter {
         result
     }
 
-    fn profile_enter(&mut self, expr_type: &'static str) -> Instant {
+    fn profile_enter(&mut self, _expr_type: &'static str) -> Instant {
         Instant::now()
     }
     fn profile_exit(&mut self, expr_type: &'static str, start: Instant) {
